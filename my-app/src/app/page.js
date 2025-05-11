@@ -11,6 +11,13 @@ import { useState, useEffect } from 'react';
 export default function Home() {
   const router = useRouter();
   const { user, isSignedIn } = useUser();
+  const handlegetstarted=()=>{
+    if (isSignedIn) {
+      router.push('/dashboard');
+    } else {
+      router.push('/sign-up');
+    }
+  }
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white">
       {/* Navigation */}
@@ -26,7 +33,7 @@ export default function Home() {
           {isSignedIn ? (
             <>
               <button
-                onClick={() => router.push('/Dashboard')}
+                onClick={() => router.push('/dashboard')}
                 className="flex items-center gap-2 text-purple-600 hover:text-purple-800 transition-colors"
               >
                 <Image
@@ -83,7 +90,7 @@ export default function Home() {
             Transform your college experience with a vibrant community, mentorship opportunities, 
             and exciting challenges that make every day count.
           </p>
-          <Button size="lg" className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full transition-all duration-300 hover:scale-105">
+          <Button size="lg" className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full transition-all duration-300 hover:scale-105" onClick={handlegetstarted}>
             Get Started
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </Button>
