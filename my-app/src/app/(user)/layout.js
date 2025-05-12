@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Navbar } from '@/components/ui/navbar'; // Adjust path if needed
+import Loading from './loading';
 
 export const metadata = {
   title: 'User Section',
@@ -10,7 +11,9 @@ export default function UserLayout({ children }) {
   return (
     <>
       <Navbar />
-      <main className="pt-16">{children}</main> 
-      </>
+      <Suspense fallback={<Loading />}>
+        <main className="pt-16">{children}</main>
+      </Suspense>
+    </>
   );
 }
