@@ -6,10 +6,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useState } from 'react';
 import { UserButton, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname,useRouter } from 'next/navigation';
 import clsx from 'clsx';
 
 export function Navbar() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useUser();
   const pathname = usePathname();
@@ -68,7 +69,7 @@ export function Navbar() {
               </Link>
             ))}
 
-            {user && <UserButton afterSignOutUrl="/" />}
+            {user && <UserButton />}
           </div>
 
           {/* Mobile Menu Button */}
