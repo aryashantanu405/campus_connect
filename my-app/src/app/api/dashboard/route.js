@@ -1,20 +1,40 @@
 import connectDB from '@/lib/connectDb';
-import mongoose from 'mongoose';
+import { connect } from 'mongoose';
 import { NextResponse } from 'next/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
+import Usermodel from '@/lib/user.model';
 
-export async function GET(req) {
+
+connectDB();
+
+export async function POST(req) {
   try {
-    console.log("Connecting to database...");
-    const client = await connectDB();
+    const userData = await req.json(); // parse the incoming JSON
+    console.log('User received at backend:'); // log full user object
 
-    const db = client.connection.useDb("students");
-    const comments = await db.collection("clubs").find().limit(5).toArray();
-
-    console.log("Fetched Comments:", comments);
-
-    return NextResponse.json({ message: "Fetched comments successfully", comments });
+    const {id,firstName,lastName} = userData;
+    const email=userData.primaryEmailAddress.emailAddress; // destructure the user data
+       const existinguser=await Usermodel.findOne({ clerkId: id });
+    if (existinguser) {
+      console.log('User already exists in the database:', existinguser); // log the existing user object
+      return NextResponse.json({ message: 'User already exists' }, { status: 200 });
+    }
+    else{
+const u=new Usermodel({
+      clerkId:id,
+      username: firstName,
+      email: email,
+      department:"Ece",
+      current_year: 1,
+      points: 0,
+    });
+    await u.save();
+    console.log('User saved to database:'); // log the saved user object
+    }
+    return NextResponse.json({ message: 'User received successfully' }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching comments:", error);
-    return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });
+    console.error('Error parsing user data:', error);
+    return NextResponse.json({ message: 'Failed to receive user' }, { status: 400 });
   }
 }
+

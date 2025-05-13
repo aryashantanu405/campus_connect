@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -38,6 +39,29 @@ export default function Dashboard() {
     { name: 'Lost & Found', link: '/lost-found', icon: Search, color: 'from-red-500 to-red-700' },
     { name: 'Community', link: '/community', icon: HelpCircle, color: 'from-indigo-500 to-indigo-700' }
   ];
+  async function solve(user) {
+    try {
+      const response = await fetch('/api/dashboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(user),
+      });
+
+      const data = await response.json();
+      console.log('Response from backend:', data);
+    } catch (error) {
+      console.error('Error sending user:', error);
+    }
+  }
+ useEffect(() => {
+    if (isLoaded && user) {
+      solve(user);
+    }
+  }, [isLoaded, user]);
+
+
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">

@@ -1,0 +1,3 @@
+//routes to post the questions and provide the solutions for those answers
+// routes to upvote and downvote the questions
+//routes to reward points...
