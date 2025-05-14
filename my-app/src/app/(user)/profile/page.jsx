@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import Image from 'next/image';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,40 +34,215 @@ import {
   Heart,
   Calendar,
   MapPin,
-  Link,
-  Upload
+  Link as LinkIcon,
+  Github,
+  Linkedin,
+  Upload,
+  BookOpen,
+  Trophy,
+  Target,
+  Coffee
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Enhanced validation schema
+const formSchema = z.object({
+  username: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
+  phone: z.string()
+    .regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian phone number'),
+  department: z.string()
+    .min(1, 'Please select a department'),
+  year: z.string()
+    .min(1, 'Please select a year'),
+  location: z.string()
+    .min(2, 'Location must be at least 2 characters')
+    .max(100, 'Location must be less than 100 characters'),
+  hobbies: z.string()
+    .min(2, 'Please enter at least one hobby')
+    .max(200, 'Hobbies must be less than 200 characters'),
+  bio: z.string()
+    .min(10, 'Bio must be at least 10 characters')
+    .max(500, 'Bio must be less than 500 characters'),
+  github: z.string()
+    .regex(/^(https?:\/\/)?(www\.)?github\.com\/[a-zA-Z0-9-]+\/?$/, 'Please enter a valid GitHub profile URL')
+    .or(z.string().length(0)),
+  linkedin: z.string()
+    .regex(/^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/, 'Please enter a valid LinkedIn profile URL')
+    .or(z.string().length(0)),
+});
 
 export default function Profile() {
   const { user, isLoaded } = useUser();
   const [selectedImage, setSelectedImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [userdetails, setUserDetails] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ud,setud]=useState(null);
+  const user_id = isLoaded ? user?.id : null;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+    setValue,
+    trigger,
+    watch
+  } = useForm({
+    resolver: zodResolver(formSchema),
+    mode: 'onChange',
+    defaultValues: {
+      username: '',
+      phone: '',
+      department: '',
+      year: '',
+      location: '',
+      hobbies: '',
+      bio: '',
+      github: '',
+      linkedin: ''
+    }
+  });
+
+  async function fetchUserData(user_id) {
+    try {
+      const response = await fetch(`/api/dashboard?user_id=${user_id}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Error ${response.status}: ${errText}`);
+      }
+      const data = await response.json();
+      setUserDetails(data);
+      
+      reset({
+        username: data.name || '',
+        phone: data.phonenumber || '',
+        department: data.department || '',
+        year: data.current_year || '',
+        location: data.location || '',
+        hobbies: data.hobbies?.join(', ') || '',
+        bio: data.bio || '',
+        github: data.githubprofile || '',
+        linkedin: data.linkedinprofile || ''
+      });
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      toast.error('Failed to load user data');
+    }
+  }
+  async function senduserdetails(user_id, updatedFields) {
+  try {
+    const response = await fetch('/api/profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id,
+        ...updatedFields
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    console.log('User details sent successfully:', data);
+  } catch (error) {
+    console.error('Error sending user details:', error);
+  }
+}
+
 
   const profileData = {
     name: isLoaded ? user?.firstName + ' ' + user?.lastName : 'Loading...',
     email: isLoaded ? user?.emailAddresses[0]?.emailAddress : 'Loading...',
     avatar: isLoaded ? user?.imageUrl : '/profile-placeholder.png',
-    department: 'Electronics & Communication Engineering',
-    year: '2nd Year',
-    phone: '+91 98765 43210',
-    location: 'Mumbai, India',
-    hobbies: ['Photography', 'Gaming', 'Reading'],
-    bio: 'Passionate engineering student with a keen interest in technology and innovation. Always eager to learn and contribute to the community.',
+    dept: userdetails?.department || 'Electronics & Communication',
+    year: userdetails?.current_year || '2nd Year',
+    phone: userdetails?.phonenumber || '+91 98765 43210',
+    location: userdetails?.location || 'Patna, India',
+    hobbies: userdetails?.hobbies || ['Photography', 'Gaming', 'Reading'],
+    bio: userdetails?.bio || 'Passionate engineering student with a keen interest in technology and innovation. Always eager to learn and contribute to the community.',
     socialLinks: {
-      github: 'github.com/username',
-      linkedin: 'linkedin.com/in/username'
+      github: userdetails?.githubprofile || 'github.com/username',
+      linkedin: userdetails?.linkedinprofile || 'linkedin.com/in/username'
     }
   };
+
+  useEffect(() => {
+    if (isLoaded) {
+      fetchUserData(user_id);
+    }
+  }, [isLoaded]);
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
     if (file) {
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Please upload a valid image file (JPG, PNG, or GIF)');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
+        setSelectedImage(file);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const onSubmit = async (data) => {
+    try {
+      setIsSubmitting(true);
+
+      const isFormValid = await trigger();
+      if (!isFormValid) {
+        toast.error('Please fix the errors before submitting');
+        return;
+      }
+
+      const updatedFields = {
+        name: data.username,
+        phonenumber: data.phone,
+        department: data.department,
+        current_year: data.year,
+        location: data.location,
+        hobbies: data.hobbies.split(',').map(h => h.trim()),
+        bio: data.bio,
+        githubprofile: data.github,
+        linkedinprofile: data.linkedin
+      };
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await senduserdetails(user_id, updatedFields);
+      console.log("Sending updated data:", updatedFields);
+      toast.success('Profile updated successfully');
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSelectChange = (field, value) => {
+    setValue(field, value);
+    trigger(field);
   };
 
   return (
@@ -132,7 +310,7 @@ export default function Profile() {
                         </Label>
                       </div>
                       <div className="flex justify-end gap-4">
-                        <Button variant="outline">Cancel</Button>
+                        <Button variant="outline" onClick={() => setPreviewImage(null)}>Cancel</Button>
                         <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
                           Update Picture
                         </Button>
@@ -147,9 +325,9 @@ export default function Profile() {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-bold">{profileData.name}</h2>
-                  <p className="text-purple-600 font-medium">{profileData.department}</p>
+                  <p className="text-purple-600 font-medium">{profileData.dept}</p>
                 </div>
-                <Dialog>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:scale-105 transition-all duration-300">
                       Edit Profile
@@ -159,75 +337,171 @@ export default function Profile() {
                     <DialogHeader>
                       <DialogTitle>Edit Profile</DialogTitle>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="username">Full Name</Label>
-                        <Input id="username" defaultValue={profileData.name} />
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="username">
+                            Full Name
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="username"
+                            {...register('username')}
+                            className={errors.username ? 'border-red-500' : ''}
+                          />
+                          {errors.username && (
+                            <p className="text-sm text-red-500">{errors.username.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">
+                            Phone Number
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="phone"
+                            {...register('phone')}
+                            className={errors.phone ? 'border-red-500' : ''}
+                          />
+                          {errors.phone && (
+                            <p className="text-sm text-red-500">{errors.phone.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="department">
+                            Department
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            onValueChange={(value) => handleSelectChange('department', value)}
+                          >
+                            <SelectTrigger className={errors.department ? 'border-red-500' : ''}>
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
+                              <SelectItem value="Computer Science">Computer Science</SelectItem>
+                              <SelectItem value="Mechanical">Mechanical</SelectItem>
+                              <SelectItem value="Civil">Civil</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {errors.department && (
+                            <p className="text-sm text-red-500">{errors.department.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="year">
+                            Year of Study
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            onValueChange={(value) => handleSelectChange('year', value)}
+                          >
+                            <SelectTrigger className={errors.year ? 'border-red-500' : ''}>
+                              <SelectValue placeholder="Select year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1st Year">1st Year</SelectItem>
+                              <SelectItem value="2nd Year">2nd Year</SelectItem>
+                              <SelectItem value="3rd Year">3rd Year</SelectItem>
+                              <SelectItem value="4th Year">4th Year</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {errors.year && (
+                            <p className="text-sm text-red-500">{errors.year.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="location">
+                            Location
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="location"
+                            {...register('location')}
+                            className={errors.location ? 'border-red-500' : ''}
+                          />
+                          {errors.location && (
+                            <p className="text-sm text-red-500">{errors.location.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="hobbies">
+                            Hobbies (comma-separated)
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="hobbies"
+                            {...register('hobbies')}
+                            className={errors.hobbies ? 'border-red-500' : ''}
+                          />
+                          {errors.hobbies && (
+                            <p className="text-sm text-red-500">{errors.hobbies.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="bio">
+                            Bio
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Textarea
+                            id="bio"
+                            {...register('bio')}
+                            className={`min-h-[100px] ${errors.bio ? 'border-red-500' : ''}`}
+                          />
+                          {errors.bio && (
+                            <p className="text-sm text-red-500">{errors.bio.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="github">GitHub Profile</Label>
+                          <Input
+                            id="github"
+                            {...register('github')}
+                            className={errors.github ? 'border-red-500' : ''}
+                          />
+                          {errors.github && (
+                            <p className="text-sm text-red-500">{errors.github.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="linkedin">LinkedIn Profile</Label>
+                          <Input
+                            id="linkedin"
+                            {...register('linkedin')}
+                            className={errors.linkedin ? 'border-red-500' : ''}
+                          />
+                          {errors.linkedin && (
+                            <p className="text-sm text-red-500">{errors.linkedin.message}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" defaultValue={profileData.phone} />
+
+                      <div className="flex justify-end gap-4">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setIsDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600"
+                          disabled={!isValid || isSubmitting}
+                        >
+                          {isSubmitting ? 'Saving...' : 'Save Changes'}
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="department">Department</Label>
-                        <Select defaultValue="ece">
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select department" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ece">Electronics & Communication</SelectItem>
-                            <SelectItem value="cse">Computer Science</SelectItem>
-                            <SelectItem value="me">Mechanical</SelectItem>
-                            <SelectItem value="ce">Civil</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="year">Year of Study</Label>
-                        <Select defaultValue="2">
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1st Year</SelectItem>
-                            <SelectItem value="2">2nd Year</SelectItem>
-                            <SelectItem value="3">3rd Year</SelectItem>
-                            <SelectItem value="4">4th Year</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="location">Location</Label>
-                        <Input id="location" defaultValue={profileData.location} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="hobbies">Hobbies</Label>
-                        <Input id="hobbies" defaultValue={profileData.hobbies.join(', ')} />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="bio">Bio</Label>
-                        <Textarea
-                          id="bio"
-                          defaultValue={profileData.bio}
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="github">GitHub Profile</Label>
-                        <Input id="github" defaultValue={profileData.socialLinks.github} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="linkedin">LinkedIn Profile</Label>
-                        <Input id="linkedin" defaultValue={profileData.socialLinks.linkedin} />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-4 mt-6">
-                     <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:scale-105 transition-all duration-300">
-                      Save Changes
-                    </Button>
-                  </DialogTrigger>
-                    </div>
+                    </form>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -243,7 +517,7 @@ export default function Profile() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Building2 className="w-5 h-5 text-gray-500" />
-                  <span>{profileData.department}</span>
+                  <span>{profileData.dept}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <GraduationCap className="w-5 h-5 text-gray-500" />
@@ -253,6 +527,36 @@ export default function Profile() {
                   <MapPin className="w-5 h-5 text-gray-500" />
                   <span>{profileData.location}</span>
                 </div>
+                <div className="flex items-center gap-3">
+                  <Heart className="w-5 h-5 text-gray-500" />
+                  <span>{profileData.hobbies.join(', ')}</span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="font-semibold mb-2">About Me</h3>
+                <p className="text-gray-600">{profileData.bio}</p>
+              </div>
+
+              <div className="flex gap-4 mt-6">
+                <a
+                  href={`https://${profileData.socialLinks.github}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Github className="w-5 h-5" />
+                  <span>GitHub</span>
+                </a>
+                <a
+                  href={`https://${profileData.socialLinks.linkedin}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <Linkedin className="w-5 h-5" />
+                  <span>LinkedIn</span>
+                </a>
               </div>
             </div>
           </div>

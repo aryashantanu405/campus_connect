@@ -20,8 +20,9 @@ const userSchema = new mongoose.Schema({
     unique: true,
     required: true,
   },
+  location:String,
   department: String,
-  current_year: Number,
+  current_year: String,
   points: {
     type: Number,
     default: 0,
@@ -49,6 +50,10 @@ const userSchema = new mongoose.Schema({
   linkedinprofile: {
     type: String,
     default: "",
+  },
+  numberofchallengesjoined: {
+    type: Number,
+    default: 0,
   },
 });
 

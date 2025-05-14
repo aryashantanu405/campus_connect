@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useEffect } from 'react';
+import { useEffect,useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -19,17 +19,13 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
+  const [userdetails, setUserDetails] = useState(null);
   const { user, isLoaded } = useUser();
+  const user_id = isLoaded ? user?.id : null;
 
   const user_name = isLoaded ? user?.firstName || 'User' : 'Loading...';
   const profileImage = isLoaded ? user?.imageUrl || '/profile-placeholder.png' : '/profile-placeholder.png';
 
-  const stats = [
-    { label: 'Clubs Joined', value: 6, icon: Users, color: 'text-blue-600' },
-    { label: 'XP Points', value: 1430, icon: Award, color: 'text-purple-600' },
-    { label: 'Events Attended', value: 12, icon: Calendar, color: 'text-green-600' },
-    { label: 'Memes Uploaded', value: 9, icon: MessageSquare, color: 'text-amber-600' }
-  ];
 
   const quickLinks = [
     { name: 'My Clubs', link: '/clubs', icon: Users2, color: 'from-blue-500 to-blue-700' },
@@ -39,7 +35,9 @@ export default function Dashboard() {
     { name: 'Lost & Found', link: '/lost-found', icon: Search, color: 'from-red-500 to-red-700' },
     { name: 'Community', link: '/community', icon: HelpCircle, color: 'from-indigo-500 to-indigo-700' }
   ];
-  async function solve(user) {
+
+  
+  async function handlenewuser(user) {
     try {
       const response = await fetch('/api/dashboard', {
         method: 'POST',
@@ -55,13 +53,39 @@ export default function Dashboard() {
       console.error('Error sending user:', error);
     }
   }
+  async function fetchUserData(user_id) {
+  try {
+    const response = await fetch(`/api/dashboard?user_id=${user_id}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Error ${response.status}: ${errText}`);
+    }
+    const data = await response.json();
+    console.log('User data:', data);
+    setUserDetails(data);
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+}
+
  useEffect(() => {
     if (isLoaded && user) {
-      solve(user);
+      handlenewuser(user);
+      fetchUserData(user_id);
     }
   }, [isLoaded, user]);
 
+  const department = userdetails?.department || 'Loading...';
+  const current_year = userdetails?.current_year || 'Loading...';
+  const points = userdetails?.points || 0;
+  const numberofclubsjoined = userdetails?.numberofclubsjoined || 0;
 
+const stats = [
+    { label: 'Clubs Joined', value: numberofclubsjoined, icon: Users, color: 'text-blue-600' },
+    { label: 'XP Points', value: points, icon: Award, color: 'text-purple-600' },
+    { label: 'Events Attended', value: 12, icon: Calendar, color: 'text-green-600' },
+    { label: 'Memes Uploaded', value: 9, icon: MessageSquare, color: 'text-amber-600' }
+  ];
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
@@ -94,7 +118,7 @@ export default function Dashboard() {
             />
             <div className="text-center sm:text-left">
               <h2 className="text-2xl font-bold">{user_name}</h2>
-              <p className="text-purple-600 font-medium">ECE | 2nd Year</p>
+              <p className="text-purple-600 font-medium">{department} | {current_year}</p>
             </div>
             <div className="sm:ml-auto">
               <Link
