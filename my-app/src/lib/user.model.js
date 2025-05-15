@@ -27,6 +27,18 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  clubsfollowed: {
+    type: [String],
+    default: [],
+    enum: [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+    ],
+  },
   numberofclubsjoined: {
     type: Number,
     default: 0,

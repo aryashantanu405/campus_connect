@@ -74,7 +74,7 @@ export default function Dashboard() {
       fetchUserData(user_id);
     }
   }, [isLoaded, user]);
-
+  const u_name= userdetails?.username || 'Loading...';
   const department = userdetails?.department || 'Loading...';
   const current_year = userdetails?.current_year || 'Loading...';
   const points = userdetails?.points || 0;
@@ -100,7 +100,7 @@ const stats = [
         {/* Header */}
         <section className="relative">
           <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            Welcome back, {user_name} 👋
+            Welcome back, {u_name || user_name} 👋
           </h1>
           <p className="text-gray-600 text-lg">Here's what's happening in your UNIFY space today.</p>
         </section>
@@ -117,7 +117,7 @@ const stats = [
               onError={(e) => e.target.src = '/profile-placeholder.png'}
             />
             <div className="text-center sm:text-left">
-              <h2 className="text-2xl font-bold">{user_name}</h2>
+              <h2 className="text-2xl font-bold">{u_name || user_name}</h2>
               <p className="text-purple-600 font-medium">{department} | {current_year}</p>
             </div>
             <div className="sm:ml-auto">

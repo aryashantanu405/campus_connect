@@ -1,8 +1,11 @@
 import mongoose from "mongoose";
-import { notFound } from "next/navigation";
 
 const itemSchema = new mongoose.Schema({
   id:{
+    type: String,
+    required: true,
+  },
+  user_id:{
     type: String,
     required: true,
   },
@@ -22,10 +25,10 @@ const itemSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  image_src: {
+  image: {
     type: String,
   },
-  status: {
+  type: {
     type: String,
     enum: ['lost', 'found'],
     default: 'lost',
