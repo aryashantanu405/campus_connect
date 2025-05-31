@@ -214,7 +214,7 @@ export default function Dashboard() {
         {/* Footer */}
         <footer className="text-center py-8">
           <p className="text-gray-500">
-            🚀 Made with ❤️ by Team UNIFY
+            🚀 Made with ❤️ by Shantanu
           </p>
         </footer>
       </div>
