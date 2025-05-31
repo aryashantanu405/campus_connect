@@ -22,7 +22,7 @@ const clubSchema= new mongoose.Schema({
     type:String,
     required:true
   },
-  follower_count:{
+  followers:{
     type:Number,
     default:0
   },

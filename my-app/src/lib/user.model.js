@@ -1,6 +1,3 @@
-// lib/user.model.js
-
-import { Biohazard } from "lucide-react";
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
@@ -20,9 +17,15 @@ const userSchema = new mongoose.Schema({
     unique: true,
     required: true,
   },
-  location:String,
-  department: String,
-  current_year: String,
+  location: String,
+  department: {
+    type: String,
+    default: "ECE"
+  },
+  current_year: {
+    type: String,
+    default: "1"
+  },
   points: {
     type: Number,
     default: 0,
@@ -30,20 +33,12 @@ const userSchema = new mongoose.Schema({
   clubsfollowed: {
     type: [String],
     default: [],
-    enum: [
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-    ],
   },
   numberofclubsjoined: {
     type: Number,
     default: 0,
   },
-  phonenumber:{
+  phonenumber: {
     type: String,
     unique: true,
   },
@@ -66,7 +61,9 @@ const userSchema = new mongoose.Schema({
   numberofchallengesjoined: {
     type: Number,
     default: 0,
-  },
+  }
+}, {
+  timestamps: true
 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);

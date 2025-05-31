@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
-import { useEffect,useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import FlexCard from '@/components/FlexCard';
 import { 
   Users, 
   Award, 
@@ -20,12 +21,12 @@ import {
 
 export default function Dashboard() {
   const [userdetails, setUserDetails] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user, isLoaded } = useUser();
   const user_id = isLoaded ? user?.id : null;
 
   const user_name = isLoaded ? user?.firstName || 'User' : 'Loading...';
   const profileImage = isLoaded ? user?.imageUrl || '/profile-placeholder.png' : '/profile-placeholder.png';
-
 
   const quickLinks = [
     { name: 'My Clubs', link: '/clubs', icon: Users2, color: 'from-blue-500 to-blue-700' },
@@ -36,7 +37,6 @@ export default function Dashboard() {
     { name: 'Community', link: '/community', icon: HelpCircle, color: 'from-indigo-500 to-indigo-700' }
   ];
 
-  
   async function handlenewuser(user) {
     try {
       const response = await fetch('/api/dashboard', {
@@ -53,34 +53,36 @@ export default function Dashboard() {
       console.error('Error sending user:', error);
     }
   }
-  async function fetchUserData(user_id) {
-  try {
-    const response = await fetch(`/api/dashboard?user_id=${user_id}`);
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Error ${response.status}: ${errText}`);
-    }
-    const data = await response.json();
-    console.log('User data:', data);
-    setUserDetails(data);
-  } catch (error) {
-    console.error('Error fetching user data:', error);
-  }
-}
 
- useEffect(() => {
+  async function fetchUserData(user_id) {
+    try {
+      const response = await fetch(`/api/dashboard?user_id=${user_id}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Error ${response.status}: ${errText}`);
+      }
+      const data = await response.json();
+      console.log('User data:', data);
+      setUserDetails(data);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  }
+
+  useEffect(() => {
     if (isLoaded && user) {
       handlenewuser(user);
       fetchUserData(user_id);
     }
-  }, [isLoaded, user]);
-  const u_name= userdetails?.username || 'Loading...';
+  }, [isLoaded, user, user_id]);
+
+  const u_name = userdetails?.username || 'Loading...';
   const department = userdetails?.department || 'Loading...';
   const current_year = userdetails?.current_year || 'Loading...';
   const points = userdetails?.points || 0;
   const numberofclubsjoined = userdetails?.numberofclubsjoined || 0;
 
-const stats = [
+  const stats = [
     { label: 'Clubs Joined', value: numberofclubsjoined, icon: Users, color: 'text-blue-600' },
     { label: 'XP Points', value: points, icon: Award, color: 'text-purple-600' },
     { label: 'Events Attended', value: 12, icon: Calendar, color: 'text-green-600' },
@@ -172,26 +174,42 @@ const stats = [
           </div>
         </section>
 
-        {/* Flex Card Preview */}
-        <Card className="p-6 backdrop-blur-sm bg-white/80 border-2 hover:border-blue-200 transition-all duration-300">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                <Share2 className="w-6 h-6" />
+        {/* Flex Card Section */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Card className="p-6 backdrop-blur-sm bg-white/80 border-2 hover:border-blue-200 transition-all duration-300 cursor-pointer">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                    <Share2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold mb-1">Your Flex Card</h2>
+                    <p className="text-gray-600">Share your achievements with the community!</p>
+                  </div>
+                </div>
+                <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  View & Share
+                </button>
               </div>
-              <div>
-                <h2 className="text-xl font-bold mb-1">Your Flex Card</h2>
-                <p className="text-gray-600">Share your achievements with the community!</p>
-              </div>
-            </div>
-            <Link
-              href="/flex-card"
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              View & Share
-            </Link>
-          </div>
-        </Card>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogTitle className="text-2xl font-bold mb-6 text-center">
+              Your Achievement Card
+            </DialogTitle>
+            <FlexCard
+              user={{
+                username: u_name,
+                department,
+                current_year,
+                points
+              }}
+              profileImage={profileImage}
+              stats={stats}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Footer */}
         <footer className="text-center py-8">
