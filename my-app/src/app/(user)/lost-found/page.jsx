@@ -1,15 +1,16 @@
 'use client';
 
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, MapPin, Plus, Upload } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Plus, Upload, Search, Filter, AlertCircle } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -23,56 +24,27 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-
-// Mock data
-const initialItems = [
-  {
-    id: '1',
-    user_id: 'user1',
-    owner_username: 'mayank',
-    image: 'https://images.pexels.com/photos/3602258/pexels-photo-3602258.jpeg',
-    description: 'Black leather wallet with important cards',
-    place: 'Central Library, 2nd Floor',
-    date: new Date('2024-03-20'),
-    type: 'lost'
-  },
-  {
-    id: '2',
-    user_id: 'user2',
-    owner_username: 'shantanu',
-    image: 'https://images.pexels.com/photos/1010496/pexels-photo-1010496.jpeg',
-    description: 'Apple AirPods Pro with case',
-    place: 'Student Center',
-    date: new Date('2024-03-19'),
-    type: 'found'
-  },
-  {
-    id: '3',
-    user_id: 'user3',
-    owner_username: 'trinetra',
-    image: 'https://images.pexels.com/photos/1042143/pexels-photo-1042143.jpeg',
-    description: 'Silver wristwatch with brown leather strap',
-    place: 'Engineering Block',
-    date: new Date('2024-03-18'),
-    type: 'lost'
-  },
-  {
-    id: '4',
-    user_id: 'user4',
-    owner_username: 'aryan',
-    image: 'https://images.pexels.com/photos/1161541/pexels-photo-1161541.jpeg',
-    description: 'Blue backpack with laptop inside',
-    place: 'Cafeteria',
-    date: new Date('2024-03-17'),
-    type: 'found'
-  }
-];
-
+import { useUser } from "@clerk/nextjs";
 
 export default function LostAndFound() {
-  const [items, setItems] = useState(initialItems);
+  const { user } = useUser();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
   const [date, setDate] = useState(new Date());
   const [formData, setFormData] = useState({
     description: '',
@@ -82,29 +54,23 @@ export default function LostAndFound() {
   });
   const [previewImage, setPreviewImage] = useState(null);
 
-  const fetchitems =async (initialItems)=>{
-    try{
-      const response =await fetch('/api/lost-found',{
-        headers:{
-          'Content-Type':'application/json'
-        },
-        method:'POST',
-        body:JSON.stringify(initialItems),
-      });
-      if(!response.ok){
-        throw new Error('Failed to fetch items');
-      }
-      const data = await response.json();
-      console.log('Fetched items:', data);
-    }
-    catch(error){
-      console.error('Error fetching items:', error);
-    }
-  }
-
   useEffect(() => {
-    fetchitems(initialItems);
-  },[initialItems]);
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const response = await fetch('/api/lost-found');
+      if (!response.ok) throw new Error('Failed to fetch items');
+      const data = await response.json();
+      setItems(data);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to load items. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -118,30 +84,82 @@ export default function LostAndFound() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newItem = {
-      _id: String(items.length + 1),
-      user_id: 'current_user',
-      image: previewImage || 'https://images.pexels.com/photos/1010496/pexels-photo-1010496.jpeg',
-      description: formData.description,
-      place: formData.place,
-      date: format(date, 'yyyy-MM-dd'),
-      type: formData.type
-    };
+    if (!user) {
+      toast.error("Please sign in to post items.");
+      return;
+    }
 
-    setItems(prev => [newItem, ...prev]);
-    setIsDialogOpen(false);
-    setFormData({ description: '', place: '', type: 'lost', image: null });
-    setPreviewImage(null);
-    setDate(new Date());
-    
-    console.log('New item created:', newItem);
+    try {
+      const newItem = {
+        user_id: user.id,
+        owner_username: user.username || user.firstName,
+        image: previewImage || 'https://images.pexels.com/photos/1010496/pexels-photo-1010496.jpeg',
+        description: formData.description,
+        place: formData.place,
+        date,
+        type: formData.type
+      };
+
+      const response = await fetch('/api/lost-found', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem),
+      });
+
+      if (!response.ok) throw new Error('Failed to post item');
+
+      toast.success("Item posted successfully!");
+
+      setIsDialogOpen(false);
+      setFormData({ description: '', place: '', type: 'lost', image: null });
+      setPreviewImage(null);
+      setDate(new Date());
+      fetchItems();
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to post item. Please try again.");
+    }
   };
+
+  const handleClaim = async (item) => {
+    if (!user) {
+      toast.error("Please sign in to claim items.");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/lost-found', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item._id,
+          claimed_by: user.id
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to claim item');
+
+      toast.success("Item claimed successfully! The owner will be notified.");
+
+      fetchItems();
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to claim item. Please try again.");
+    }
+  };
+
+  const filteredItems = items
+    .filter(item => 
+      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.place.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .filter(item => filterType === 'all' || item.type === filterType);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
-      {/* Animated background circles */}
+      {/* Animated background */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
         <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -153,69 +171,151 @@ export default function LostAndFound() {
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
             Lost & Found
           </h1>
-          <p className="text-gray-600 text-lg">
-            Help your fellow students find their lost items or report what you've found
+          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+            Help your fellow students find their lost items or report what you've found. Together we can make a difference!
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {items.map((item) => (
-            <Card
-              key={item.id}
-              className={cn(
-                "group p-6 backdrop-blur-sm bg-white/80 border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1",
-                item.type === 'lost' 
-                  ? "hover:border-red-200" 
-                  : "hover:border-green-200"
-              )}
+        {/* Search and Filter */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              className="pl-10"
+              placeholder="Search items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={filterType === 'all' ? 'default' : 'outline'}
+              onClick={() => setFilterType('all')}
+              className="flex-1 sm:flex-none"
             >
-              <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
-                <Image
-                  src={item.image}
-                  alt={item.description}
-                  fill
-                  className="object-cover"
-                />
-                <div className={cn(
-                  "absolute top-2 right-2 px-3 py-1 rounded-full text-white text-sm font-medium",
-                  item.type === 'lost' ? "bg-red-500" : "bg-green-500"
-                )}>
-                  {item.type === 'lost' ? 'Lost' : 'Found'}
-                </div>
-              </div>
-              
-              <h3 className="text-lg text-center font-semibold mb-2 line-clamp-2">
-                {item.description}
-              </h3>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center text-gray-600">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{item.place}</span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{format(new Date(item.date), 'PPP')}</span>
-                </div>
-              </div>
-              
-              <Button 
+              All
+            </Button>
+            <Button
+              variant={filterType === 'lost' ? 'default' : 'outline'}
+              onClick={() => setFilterType('lost')}
+              className="flex-1 sm:flex-none"
+            >
+              Lost
+            </Button>
+            <Button
+              variant={filterType === 'found' ? 'default' : 'outline'}
+              onClick={() => setFilterType('found')}
+              className="flex-1 sm:flex-none"
+            >
+              Found
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1].map((n) => (
+              <Card key={n} className="p-6 animate-pulse">
+                <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </Card>
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
+            <p className="text-gray-500">Try adjusting your search or filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredItems.map((item) => (
+              <Card
+                key={item._id}
                 className={cn(
-                  "w-full",
-                    "bg-green-500 hover:bg-green-600"
+                  "group p-6 backdrop-blur-sm bg-white/80 border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1",
+                  item.type === 'lost' 
+                    ? "hover:border-red-200" 
+                    : "hover:border-green-200"
                 )}
               >
-                Claim Item
-              </Button>
-            </Card>
-          ))}
-        </div>
+                <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
+                  <Image
+                    src='/default_logo.png' // Fallback image
+                    alt="Item Image"
+                    fill
+                    className="object-cover transition-transform group-hover:scale-105"
+                  />
+                  <div className={cn(
+                    "absolute top-2 right-2 px-3 py-1 rounded-full text-white text-sm font-medium",
+                    item.type === 'lost' ? "bg-red-500" : "bg-green-500"
+                  )}>
+                    {item.type === 'lost' ? 'Lost' : 'Found'}
+                  </div>
+                </div>
+                
+                <h3 className="text-lg font-semibold mb-2 line-clamp-2">
+                  {item.description}
+                </h3>
+                
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center text-gray-600">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{item.place}</span>
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{format(new Date(item.date), 'PPP')}</span>
+                  </div>
+                </div>
+
+                {item.status === 'claimed' ? (
+                  <div className="text-center py-2 bg-gray-100 rounded-lg text-gray-600">
+                    Item has been claimed
+                  </div>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        className={cn(
+                          "w-full",
+                          item.type === 'lost' 
+                            ? "bg-red-500 hover:bg-red-600"
+                            : "bg-green-500 hover:bg-green-600"
+                        )}
+                      >
+                        {item.type === 'lost' ? 'I Found This!' : 'Claim Item'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Action</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {item.type === 'lost' 
+                            ? "Have you found this item? The owner will be notified and can contact you."
+                            : "Is this your lost item? You'll be able to contact the finder."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleClaim(item)}>
+                          Confirm
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Add Item Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
-              className="fixed bottom-8 right-8 w-16 h-16 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 transition-all duration-300 hover:scale-105"
+              className="fixed bottom-8 right-8 w-16 h-16 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-105"
             >
               <Plus className="w-6 h-6" />
             </Button>
@@ -327,7 +427,7 @@ export default function LostAndFound() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                   Submit
                 </Button>
               </div>

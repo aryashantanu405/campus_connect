@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { MessageSquare, Heart, Plus, Upload } from 'lucide-react';
+import { Heart, Plus, Upload, Share2, Trash2, Loader2 } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -16,42 +17,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-// Mock data for initial posts
-const initialPosts = [
-  {
-    id: 1,
-    title: 'Campus Hackathon Success!',
-    description: 'Just wrapped up our biggest hackathon yet! Over 200 participants, 48 hours of coding, and some incredible projects. Proud to see such innovation from our student community.',
-    image_src: 'https://images.pexels.com/photos/7433833/pexels-photo-7433833.jpeg',
-    date: '2024-03-20T10:00:00Z',
-    likes: 42,
-    comments: 15
-  },
-  {
-    id: 2,
-    title: 'Cultural Night Highlights',
-    description: 'What an amazing display of talent at last night\'s cultural fest! From classical dance to modern music, our students showed their artistic side. Check out some moments from the event.',
-    image_src: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg',
-    date: '2024-03-19T18:30:00Z',
-    likes: 89,
-    comments: 23
-  },
-  {
-    id: 3,
-    title: 'New Library Resources',
-    description: 'The college library just got updated with a new digital section! Now you can access thousands of e-books and research papers. Don\'t forget to check out the new study spaces too.',
-    image_src: 'https://images.pexels.com/photos/256541/pexels-photo-256541.jpeg',
-    date: '2024-03-18T09:15:00Z',
-    likes: 31,
-    comments: 8
-  }
-];
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser } from "@clerk/nextjs";
 
 export default function CommunityPage() {
-  const [posts, setPosts] = useState(initialPosts);
+  const { user } = useUser();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [likedPosts, setLikedPosts] = useState(new Set());
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -59,23 +43,72 @@ export default function CommunityPage() {
   });
   const [previewImage, setPreviewImage] = useState(null);
 
-  const handleLike = (postId) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => 
-        post.id === postId
-          ? { ...post, likes: likedPosts.has(postId) ? post.likes - 1 : post.likes + 1 }
-          : post
-      )
-    );
-    setLikedPosts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(postId)) {
-        newSet.delete(postId);
-      } else {
-        newSet.add(postId);
-      }
-      return newSet;
-    });
+  useEffect(() => {
+    fetchPosts();
+  }, [user]);
+
+  const fetchPosts = async () => {
+    try {
+      const url = user ? `/api/community?user_id=${user.id}` : '/api/community';
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch posts');
+      const data = await response.json();
+      setPosts(data);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to load posts. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (postId) => {
+    try {
+      const response = await fetch(`/api/community?id=${postId}&user_id=${user.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete post');
+
+      toast.success("Post deleted successfully!");
+      setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to delete post. Please try again.");
+    }
+  };
+
+  const handleLike = async (postId, isLiked) => {
+    if (!user) {
+      toast.error("Please sign in to like posts");
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/community', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          post_id: postId,
+          user_id: user.id,
+          action: isLiked ? 'unlike' : 'like'
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update like');
+      const data = await response.json();
+      
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post._id === postId
+            ? { ...post, likes: data.likes, isLiked: data.isLiked }
+            : post
+        )
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to update like. Please try again.");
+    }
   };
 
   const handleImageChange = (e) => {
@@ -90,33 +123,61 @@ export default function CommunityPage() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newPost = {
-      id: posts.length + 1,
-      ...formData,
-      date: new Date().toISOString(),
-      likes: 0,
-      comments: 0
-    };
+    if (!user) {
+      toast.error("Please sign in to create posts");
+      return;
+    }
 
-    setPosts(prev => [newPost, ...prev]);
-    setIsDialogOpen(false);
-    setFormData({ title: '', description: '', image_src: '' });
-    setPreviewImage(null);
+    try {
+      const newPost = {
+        ...formData,
+        author: {
+          name: user.fullName || user.username,
+          avatar: user.imageUrl,
+          userId: user.id
+        }
+      };
+
+      const response = await fetch('/api/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPost),
+      });
+
+      if (!response.ok) throw new Error('Failed to create post');
+
+      toast.success("Post created successfully!");
+      setIsDialogOpen(false);
+      setFormData({ title: '', description: '', image_src: '' });
+      setPreviewImage(null);
+      fetchPosts();
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Failed to create post. Please try again.");
+    }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
-      {/* Animated background circles */}
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-4 lg:p-6">
+      {/* Animated background */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
         <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
         <div className="absolute top-40 right-40 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
             Community Feed
           </h1>
@@ -125,14 +186,65 @@ export default function CommunityPage() {
           </p>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {posts.map((post) => (
             <Card
-              key={post.id}
-              className="group p-6 backdrop-blur-sm bg-white/80 border-2 hover:border-blue-200 transition-all duration-300 hover:shadow-xl"
+              key={post._id}
+              className="group overflow-hidden backdrop-blur-sm bg-white/80 border-2 hover:border-blue-200 transition-all duration-300 hover:shadow-xl"
             >
+              {/* Post Header */}
+              <div className="p-4 flex items-center justify-between border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarImage src={post.author.avatar} alt={post.author.name} />
+                    <AvatarFallback>{post.author.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-semibold">{post.author.name}</h3>
+                    <p className="text-sm text-gray-500">{format(new Date(post.createdAt), 'PPP')}</p>
+                  </div>
+                </div>
+                {user && post.author.userId === user.id && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-red-500">
+                        <Trash2 className="w-5 h-5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Post</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this post? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(post._id)}
+                          className="bg-red-500 hover:bg-red-600"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+              
+              {/* Post Content */}
+              <div className="p-4">
+                <h2 className="text-xl font-bold mb-2 group-hover:text-blue-600 transition-colors">
+                  {post.title}
+                </h2>
+                <p className="text-gray-600 mb-4 whitespace-pre-wrap">
+                  {post.description}
+                </p>
+              </div>
+
+              {/* Post Image */}
               {post.image_src && (
-                <div className="relative w-full h-64 mb-4 rounded-lg overflow-hidden">
+                <div className="relative w-full aspect-video">
                   <Image
                     src={post.image_src}
                     alt={post.title}
@@ -142,27 +254,18 @@ export default function CommunityPage() {
                 </div>
               )}
               
-              <h2 className="text-2xl font-bold mb-2 group-hover:text-blue-600 transition-colors">
-                {post.title}
-              </h2>
-              
-              <p className="text-gray-600 mb-4">
-                {post.description}
-              </p>
-              
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{format(new Date(post.date), 'PPP')}</span>
-                
-                <div className="flex items-center gap-4">
+              {/* Post Actions */}
+              <div className="p-4 border-t border-gray-100">
+                <div className="flex items-center justify-between">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-2"
-                    onClick={() => handleLike(post.id)}
+                    className="flex items-center gap-2 hover:text-red-500"
+                    onClick={() => handleLike(post._id, post.isLiked)}
                   >
                     <Heart
-                      className={`w-5 h-5 ${
-                        likedPosts.has(post.id)
+                      className={`w-5 h-5 transition-colors ${
+                        post.isLiked
                           ? 'fill-red-500 text-red-500'
                           : 'text-gray-500'
                       }`}
@@ -170,10 +273,13 @@ export default function CommunityPage() {
                     <span>{post.likes}</span>
                   </Button>
                   
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5" />
-                    <span>{post.comments}</span>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 hover:text-blue-500"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -184,7 +290,7 @@ export default function CommunityPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
-              className="fixed bottom-8 right-8 w-16 h-16 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 transition-all duration-300 hover:scale-105"
+              className="fixed bottom-8 right-8 w-16 h-16 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 hover:scale-105"
             >
               <Plus className="w-6 h-6" />
             </Button>
@@ -257,7 +363,7 @@ export default function CommunityPage() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                   Post
                 </Button>
               </div>

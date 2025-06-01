@@ -1,11 +1,7 @@
 import mongoose from "mongoose";
 
 const itemSchema = new mongoose.Schema({
-  id:{
-    type: String,
-    required: true,
-  },
-  user_id:{
+  user_id: {
     type: String,
     required: true,
   },
@@ -13,7 +9,7 @@ const itemSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  place:{
+  place: {
     type: String,
     required: true,
   },
@@ -27,6 +23,7 @@ const itemSchema = new mongoose.Schema({
   },
   image: {
     type: String,
+    required: true,
   },
   type: {
     type: String,
@@ -34,7 +31,21 @@ const itemSchema = new mongoose.Schema({
     default: 'lost',
     required: true,
   },
-
+  status: {
+    type: String,
+    enum: ['active', 'claimed'],
+    default: 'active'
+  },
+  claimed_by: {
+    type: String,
+    default: null
+  },
+  claimed_date: {
+    type: Date,
+    default: null
+  }
+}, {
+  timestamps: true
 });
 
 const Item = mongoose.models.Item || mongoose.model('Item', itemSchema);
