@@ -43,6 +43,7 @@ export default function LostAndFound() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [date, setDate] = useState(new Date());
@@ -52,6 +53,7 @@ export default function LostAndFound() {
     type: 'lost',
     image: null
   });
+  const [selectedImage, setSelectedImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
@@ -75,6 +77,20 @@ export default function LostAndFound() {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Please upload a valid image file (JPG, PNG, or GIF)');
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
@@ -92,34 +108,38 @@ export default function LostAndFound() {
     }
 
     try {
-      const newItem = {
-        user_id: user.id,
-        owner_username: user.username || user.firstName,
-        image: previewImage || 'https://images.pexels.com/photos/1010496/pexels-photo-1010496.jpeg',
-        description: formData.description,
-        place: formData.place,
-        date,
-        type: formData.type
-      };
+      setIsSubmitting(true);
+      const formDataToSend = new FormData();
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('place', formData.place);
+      formDataToSend.append('type', formData.type);
+      formDataToSend.append('date', date.toISOString());
+      formDataToSend.append('user_id', user.id);
+      formDataToSend.append('owner_username', user.username || user.firstName);
+      
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
+      }
 
       const response = await fetch('/api/lost-found', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem),
+        body: formDataToSend,
       });
 
       if (!response.ok) throw new Error('Failed to post item');
 
       toast.success("Item posted successfully!");
-
       setIsDialogOpen(false);
       setFormData({ description: '', place: '', type: 'lost', image: null });
+      setSelectedImage(null);
       setPreviewImage(null);
       setDate(new Date());
       fetchItems();
     } catch (error) {
       console.error('Error:', error);
       toast.error("Failed to post item. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -214,7 +234,7 @@ export default function LostAndFound() {
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1].map((n) => (
+            {[1, 2, 3].map((n) => (
               <Card key={n} className="p-6 animate-pulse">
                 <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -242,8 +262,8 @@ export default function LostAndFound() {
               >
                 <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
                   <Image
-                    src='/default_logo.png' // Fallback image
-                    alt="Item Image"
+                    src={item.image?.url || '/default_logo.jpg'}
+                    alt={item.description}
                     fill
                     className="object-cover transition-transform group-hover:scale-105"
                   />
@@ -427,8 +447,12 @@ export default function LostAndFound() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Submit
+                <Button 
+                  type="submit" 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit'}
                 </Button>
               </div>
             </form>

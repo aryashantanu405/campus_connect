@@ -11,7 +11,7 @@ connectDB();
 export async function POST(req) {
   try {
     const userData = await req.json(); // parse the incoming JSON
-    console.log('User received at backend:'); // log full user object
+    //console.log('User received at backend:',userData); // log full user object
 
     const {id,firstName,lastName} = userData;
     const email=userData.primaryEmailAddress.emailAddress; // destructure the user data
@@ -53,5 +53,4 @@ export async function GET(req) {
     return NextResponse.json({ message: 'Failed to fetch user data' }, { status: 500 });
   }
 }
-
 

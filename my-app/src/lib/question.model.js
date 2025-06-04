@@ -1,46 +1,74 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const questionSchema = new mongoose.Schema({
-  id: {
+  title: {
     type: String,
     required: true,
   },
-  description: {
+  content: {
     type: String,
     required: true,
   },
-  date: {
-    type: Date,
-    default: Date.now,
+  author: {
+    name: {
+      type: String,
+      required: true,
+    },
+    avatar: {
+      type: String,
+      required: true,
+    },
+    userId: {
+      type: String,
+      required: true,
+    },
+    year: {
+      type: String,
+      required: true,
+    }
   },
-  posted_by:[
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+  answers: [{
+    content: {
+      type: String,
+      required: true,
     },
-  ],
-  answers: [
-    {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-      answer: {
-        type: String,
-        required: true,
-      },
-      date: {
-        type: Date,
-        default: Date.now,
-      },
+    author: {
+      name: String,
+      avatar: String,
+      userId: String,
+      year: String,
     },
-  ],
-  upvotes: {
+    votes: {
+      type: Number,
+      default: 0,
+    },
+    votedBy: [{
+      type: String,
+    }],
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    isAccepted: {
+      type: Boolean,
+      default: false,
+    }
+  }],
+  tags: [{
+    type: String,
+  }],
+  views: {
     type: Number,
     default: 0,
   },
-
+  solved: {
+    type: Boolean,
+    default: false,
+  }
+}, {
+  timestamps: true
 });
 
 const Question = mongoose.models.Question || mongoose.model('Question', questionSchema);
+
 export default Question;

@@ -22,6 +22,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "ECE"
   },
+  image:{
+    url:{
+      type:String,
+      default:""
+    },
+    public_id:{
+      type: String,
+      default: ""
+    }
+  },
   current_year: {
     type: String,
     default: "1"
@@ -40,7 +50,7 @@ const userSchema = new mongoose.Schema({
   },
   phonenumber: {
     type: String,
-    unique: true,
+    default: "9999999999",
   },
   hobbies: {
     type: [String],

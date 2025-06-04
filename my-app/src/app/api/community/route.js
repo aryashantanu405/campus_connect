@@ -1,71 +1,94 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/connectDb';
 import PostModel from '@/lib/post.model';
+import UserModel from '@/lib/user.model';
+import { uploadImage, deleteImage } from '@/lib/cloudinary';
 
 connectDB();
 
 // Initial seed data
-const seedData = [
-  {
-    title: 'Campus Hackathon Success! 🚀',
-    description: 'Just wrapped up our biggest hackathon yet! Over 200 participants, 48 hours of coding, and some incredible projects. Proud to see such innovation from our student community. #CampusHackathon #Innovation #StudentLife',
-    image_src: 'https://images.pexels.com/photos/7433833/pexels-photo-7433833.jpeg',
-    author: {
-      name: 'Sarah Chen',
-      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
-      userId: 'seed_user_1'
-    },
-    likes: 42,
-    likedBy: []
-  },
-  {
-    title: 'Cultural Night Highlights ✨',
-    description: 'What an amazing display of talent at last night\'s cultural fest! From classical dance to modern music, our students showed their artistic side. Check out some moments from the event. #CulturalNight #CampusLife #Diversity',
-    image_src: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg',
-    author: {
-      name: 'Alex Rivera',
-      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg',
-      userId: 'seed_user_2'
-    },
-    likes: 89,
-    likedBy: []
-  },
-  {
-    title: 'New Library Resources 📚',
-    description: 'The college library just got updated with a new digital section! Now you can access thousands of e-books and research papers. Don\'t forget to check out the new study spaces too. #DigitalLibrary #Education #StudentResources',
-    image_src: 'https://images.pexels.com/photos/256541/pexels-photo-256541.jpeg',
-    author: {
-      name: 'Emily Zhang',
-      avatar: 'https://images.pexels.com/photos/1987301/pexels-photo-1987301.jpeg',
-      userId: 'seed_user_3'
-    },
-    likes: 31,
-    likedBy: []
-  }
-];
+// const seedData = [
+//   {
+//     title: 'Campus Hackathon Success! 🚀',
+//     description: 'Just wrapped up our biggest hackathon yet! Over 200 participants, 48 hours of coding, and some incredible projects. Proud to see such innovation from our student community. #CampusHackathon #Innovation #StudentLife',
+//     image_src: 'https://images.pexels.com/photos/7433833/pexels-photo-7433833.jpeg',
+//     author: {
+//       name: 'Sarah Chen',
+//       avatar: {
+//         url: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg',
+//         public_id: null
+//       },
+//       userId: 'seed_user_1'
+//     },
+//     likes: 42,
+//     likedBy: []
+//   },
+//   {
+//     title: 'Cultural Night Highlights ✨',
+//     description: 'What an amazing display of talent at last night\'s cultural fest! From classical dance to modern music, our students showed their artistic side. Check out some moments from the event. #CulturalNight #CampusLife #Diversity',
+//     image_src: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg',
+//     author: {
+//       name: 'Alex Rivera',
+//       avatar: {
+//         url: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg',
+//         public_id: null
+//       },
+//       userId: 'seed_user_2'
+//     },
+//     likes: 89,
+//     likedBy: []
+//   },
+//   {
+//     title: 'New Library Resources 📚',
+//     description: 'The college library just got updated with a new digital section! Now you can access thousands of e-books and research papers. Don\'t forget to check out the new study spaces too. #DigitalLibrary #Education #StudentResources',
+//     image_src: 'https://images.pexels.com/photos/256541/pexels-photo-256541.jpeg',
+//     author: {
+//       name: 'Emily Zhang',
+//       avatar: {
+//         url: 'https://images.pexels.com/photos/1987301/pexels-photo-1987301.jpeg',
+//         public_id: null
+//       },
+//       userId: 'seed_user_3'
+//     },
+//     likes: 31,
+//     likedBy: []
+//   }
+// ];
 
-
-
+// // Helper function to seed initial data
+// async function seedDatabase() {
+//   try {
+//     const count = await PostModel.countDocuments();
+//     if (count === 0) {
+//       await PostModel.insertMany(seedData);
+//       console.log('Database seeded successfully');
+//     }
+//   } catch (error) {
+//     console.error('Error seeding database:', error);
+//   }
+// }
 
 // Get all posts
 export async function GET(request) {
-  try { 
+  try {
+    // await seedDatabase();
     
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
 
+    const u=await UserModel.findOne({ clerkId: userId });
+
     const posts = await PostModel.find().sort({ createdAt: -1 });
     
     if (userId) {
-      // If user_id is provided, enhance posts with liked status
       const enhancedPosts = posts.map(post => ({
         ...post.toObject(),
         isLiked: post.likedBy.includes(userId)
       }));
-      return NextResponse.json(enhancedPosts);
+      return NextResponse.json({enhancedPosts,u});
     }
 
-    return NextResponse.json(posts);
+    return NextResponse.json({posts,u});
   } catch (error) {
     console.error('Error fetching posts:', error);
     return NextResponse.json({ message: 'Failed to fetch posts' }, { status: 500 });
@@ -75,8 +98,36 @@ export async function GET(request) {
 // Create new post
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const newPost = await PostModel.create(body);
+    const formData = await request.formData();
+    const title = formData.get('title');
+    const description = formData.get('description');
+    const file = formData.get('image');
+    const authorData = JSON.parse(formData.get('author'));
+     console.log('Author Data:', authorData);
+    let imageData = null;
+    if (file) {
+      const result = await uploadImage(file);
+      imageData = {
+        url: result.url,
+        public_id: result.public_id
+      };
+    }
+
+    const newPost = await PostModel.create({
+      title,
+      description,
+      image: imageData,
+      image_src: imageData?.url || '',
+      author: {
+        name: authorData.name,
+        avatar: {
+          url: authorData.avatar,
+          public_id: null
+        },
+        userId: authorData.userId
+      }
+    });
+
     return NextResponse.json(newPost);
   } catch (error) {
     console.error('Error creating post:', error);
@@ -131,9 +182,13 @@ export async function DELETE(request) {
       return NextResponse.json({ message: 'Post not found' }, { status: 404 });
     }
 
-    // Only allow deletion if the user is the author
     if (post.author.userId !== userId) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Delete image from Cloudinary if exists
+    if (post.image?.public_id) {
+      await deleteImage(post.image.public_id);
     }
 
     await PostModel.findByIdAndDelete(postId);

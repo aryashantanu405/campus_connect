@@ -22,8 +22,17 @@ const itemSchema = new mongoose.Schema({
     default: Date.now,
   },
   image: {
-    type: String,
-    required: true,
+    type: {
+      url: {
+        type: String,
+        default: "https://images.pexels.com/photos/1010496/pexels-photo-1010496.jpeg"
+      },
+      public_id: {
+        type: String,
+        default: null
+      }
+    },
+    required: true
   },
   type: {
     type: String,

@@ -123,7 +123,7 @@ export default function Leaderboard() {
           <TableBody>
             {users.map((user, index) => (
               <TableRow 
-                key={user.id} 
+                key={user._id} 
                 className={cn(
                   "transition-colors hover:bg-muted/50",
                   index < 3 ? "font-medium" : ""
@@ -154,7 +154,7 @@ export default function Leaderboard() {
       <div className="md:hidden space-y-4">
         {users.map((user, index) => (
           <Card 
-            key={user.id} 
+            key={user._id} 
             className={cn(
               "transition-all hover:shadow-md",
               index < 3 ? "border-l-4 font-medium" : "",

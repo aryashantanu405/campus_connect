@@ -11,7 +11,11 @@ const postSchema = new mongoose.Schema({
   },
   image_src: {
     type: String,
-    // required: false,
+    required: false,
+  },
+  image: {
+    url: String,
+    public_id: String
   },
   author: {
     name: {
@@ -19,8 +23,8 @@ const postSchema = new mongoose.Schema({
       required: true,
     },
     avatar: {
-      type: String,
-      required: true,
+      url: String,
+      public_id: String
     },
     userId: {
       type: String,

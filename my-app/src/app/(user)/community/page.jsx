@@ -34,13 +34,15 @@ import { useUser } from "@clerk/nextjs";
 export default function CommunityPage() {
   const { user } = useUser();
   const [posts, setPosts] = useState([]);
+  const [userDetails, setUserDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    image_src: ''
   });
+  const [selectedImage, setSelectedImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
@@ -53,7 +55,9 @@ export default function CommunityPage() {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data = await response.json();
-      setPosts(data);
+      setUserDetails(data.u);
+       console.log('User details:', data.u);
+      setPosts(data.posts || data.enhancedPosts || []);
     } catch (error) {
       console.error('Error:', error);
       toast.error("Failed to load posts. Please try again.");
@@ -114,10 +118,23 @@ export default function CommunityPage() {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Please upload a valid image file (JPG, PNG, or GIF)');
+        return;
+      }
+
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
-        setFormData(prev => ({ ...prev, image_src: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -131,31 +148,38 @@ export default function CommunityPage() {
     }
 
     try {
-      const newPost = {
-        ...formData,
-        author: {
-          name: user.fullName || user.username,
-          avatar: user.imageUrl,
-          userId: user.id
-        }
-      };
+      setIsSubmitting(true);
+
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('description', formData.description);
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
+      }
+      formDataToSend.append('author', JSON.stringify({
+        name: user.fullName || user.username,
+        avatar: userDetails?.image?.url || '/profile-placeholder.png',
+        userId: user.id
+      }));
 
       const response = await fetch('/api/community', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPost),
+        body: formDataToSend,
       });
 
       if (!response.ok) throw new Error('Failed to create post');
 
       toast.success("Post created successfully!");
       setIsDialogOpen(false);
-      setFormData({ title: '', description: '', image_src: '' });
+      setFormData({ title: '', description: '' });
+      setSelectedImage(null);
       setPreviewImage(null);
       fetchPosts();
     } catch (error) {
       console.error('Error:', error);
       toast.error("Failed to create post. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -196,7 +220,7 @@ export default function CommunityPage() {
               <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarImage src={post.author.avatar} alt={post.author.name} />
+                    <AvatarImage src={post.author.avatar.url} alt={post.author.name} />
                     <AvatarFallback>{post.author.name[0]}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -354,17 +378,37 @@ export default function CommunityPage() {
                       </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
-                    <p className="text-xs leading-5 text-gray-600">PNG, JPG, GIF up to 10MB</p>
+                    <p className="text-xs leading-5 text-gray-600">PNG, JPG, GIF up to 5MB</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    setFormData({ title: '', description: '' });
+                    setSelectedImage(null);
+                    setPreviewImage(null);
+                  }}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Post
+                <Button 
+                  type="submit" 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Posting...
+                    </>
+                  ) : (
+                    'Post'
+                  )}
                 </Button>
               </div>
             </form>

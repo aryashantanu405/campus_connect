@@ -41,11 +41,12 @@ import {
   BookOpen,
   Trophy,
   Target,
-  Coffee
+  Coffee,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Enhanced validation schema
+// Form validation schema
 const formSchema = z.object({
   username: z.string()
     .min(2, 'Name must be at least 2 characters')
@@ -81,7 +82,8 @@ export default function Profile() {
   const [userdetails, setUserDetails] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ud,setud]=useState(null);
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const user_id = isLoaded ? user?.id : null;
 
   const {
@@ -94,26 +96,14 @@ export default function Profile() {
     watch
   } = useForm({
     resolver: zodResolver(formSchema),
-    mode: 'onChange',
-    defaultValues: {
-      username: '',
-      phone: '',
-      department: '',
-      year: '',
-      location: '',
-      hobbies: '',
-      bio: '',
-      github: '',
-      linkedin: ''
-    }
+    mode: 'onChange'
   });
 
   async function fetchUserData(user_id) {
     try {
       const response = await fetch(`/api/dashboard?user_id=${user_id}`);
       if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Error ${response.status}: ${errText}`);
+        throw new Error(`Error ${response.status}`);
       }
       const data = await response.json();
       setUserDetails(data);
@@ -134,74 +124,85 @@ export default function Profile() {
       toast.error('Failed to load user data');
     }
   }
-  async function senduserdetails(user_id, updatedFields) {
-  try {
-    const response = await fetch('/api/profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        user_id,
-        ...updatedFields
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Error ${response.status}: ${errText}`);
-    }
-
-    const data = await response.json();
-    console.log('User details sent successfully:', data);
-  } catch (error) {
-    console.error('Error sending user details:', error);
-  }
-}
-
-
-  const profileData = {
-    name: isLoaded ? user?.firstName + ' ' + user?.lastName : 'Loading...',
-    email: isLoaded ? user?.emailAddresses[0]?.emailAddress : 'Loading...',
-    avatar: isLoaded ? user?.imageUrl : '/profile-placeholder.png',
-    dept: userdetails?.department || 'Electronics & Communication',
-    year: userdetails?.current_year || '2nd Year',
-    phone: userdetails?.phonenumber || '+91 98765 43210',
-    location: userdetails?.location || 'Patna, India',
-    hobbies: userdetails?.hobbies || ['Photography', 'Gaming', 'Reading'],
-    bio: userdetails?.bio || 'Passionate engineering student with a keen interest in technology and innovation. Always eager to learn and contribute to the community.',
-    socialLinks: {
-      github: userdetails?.githubprofile || 'github.com/username',
-      linkedin: userdetails?.linkedinprofile || 'linkedin.com/in/username'
-    }
-  };
 
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && user_id) {
       fetchUserData(user_id);
     }
-  }, [isLoaded]);
+  }, [isLoaded, user_id]);
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file type
       const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
       if (!validTypes.includes(file.type)) {
         toast.error('Please upload a valid image file (JPG, PNG, or GIF)');
         return;
       }
 
+      // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Image size should be less than 5MB');
         return;
       }
 
+      setSelectedImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
-        setSelectedImage(file);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!selectedImage) {
+      toast.error('Please select an image first');
+      return;
+    }
+
+    try {
+      setIsImageUploading(true);
+      const formData = new FormData();
+      formData.append('file', selectedImage);
+      formData.append('user_id', user_id);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      
+      // Update user profile with new image URL
+      const userUpdateResponse = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id,
+          profileImage: data.url
+        }),
+      });
+
+      if (!userUpdateResponse.ok) {
+        throw new Error('Failed to update profile with new image');
+      }
+
+      toast.success('Profile picture updated successfully');
+      setIsImageDialogOpen(false);
+      fetchUserData(user_id); // Refresh user data
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Failed to update profile picture');
+    } finally {
+      setIsImageUploading(false);
+      setSelectedImage(null);
+      setPreviewImage(null);
     }
   };
 
@@ -209,13 +210,9 @@ export default function Profile() {
     try {
       setIsSubmitting(true);
 
-      const isFormValid = await trigger();
-      if (!isFormValid) {
-        toast.error('Please fix the errors before submitting');
-        return;
-      }
-
-      const updatedFields = {
+      const formData = new FormData();
+      formData.append('user_id', user_id);
+      formData.append('userData', JSON.stringify({
         name: data.username,
         phonenumber: data.phone,
         department: data.department,
@@ -225,13 +222,20 @@ export default function Profile() {
         bio: data.bio,
         githubprofile: data.github,
         linkedinprofile: data.linkedin
-      };
+      }));
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await senduserdetails(user_id, updatedFields);
-      console.log("Sending updated data:", updatedFields);
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
       toast.success('Profile updated successfully');
       setIsDialogOpen(false);
+      fetchUserData(user_id);
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
@@ -245,8 +249,26 @@ export default function Profile() {
     trigger(field);
   };
 
+  const profileData = {
+    name: isLoaded ? user?.firstName + ' ' + user?.lastName : 'Loading...',
+    email: isLoaded ? user?.emailAddresses[0]?.emailAddress : 'Loading...',
+    avatar: userdetails?.image.url || (isLoaded ? user?.imageUrl : '/profile-placeholder.png'),
+    dept: userdetails?.department || 'Electronics & Communication',
+    year: userdetails?.current_year || '2nd Year',
+    phone: userdetails?.phonenumber || '+91 98765 43210',
+    location: userdetails?.location || 'Patna, India',
+    hobbies: userdetails?.hobbies || ['Photography', 'Gaming', 'Reading'],
+    bio: userdetails?.bio || 'Passionate engineering student with a keen interest in technology and innovation.',
+    socialLinks: {
+      github: userdetails?.githubprofile || 'github.com/username',
+      linkedin: userdetails?.linkedinprofile || 'linkedin.com/in/username'
+    }
+  };
+  console.log('Profile Data:', profileData);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
+      {/* Background animation */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
         <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -272,7 +294,7 @@ export default function Profile() {
                   height={150}
                   className="rounded-full ring-4 ring-purple-100"
                 />
-                <Dialog>
+                <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
                   <DialogTrigger asChild>
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                       <Upload className="w-8 h-8 text-white" />
@@ -310,9 +332,29 @@ export default function Profile() {
                         </Label>
                       </div>
                       <div className="flex justify-end gap-4">
-                        <Button variant="outline" onClick={() => setPreviewImage(null)}>Cancel</Button>
-                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
-                          Update Picture
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsImageDialogOpen(false);
+                            setPreviewImage(null);
+                            setSelectedImage(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          className="bg-gradient-to-r from-blue-600 to-purple-600"
+                          onClick={handleImageUpload}
+                          disabled={!selectedImage || isImageUploading}
+                        >
+                          {isImageUploading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            'Update Picture'
+                          )}
                         </Button>
                       </div>
                     </div>

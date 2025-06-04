@@ -26,13 +26,13 @@ export default function Dashboard() {
   const user_id = isLoaded ? user?.id : null;
 
   const user_name = isLoaded ? user?.firstName || 'User' : 'Loading...';
-  const profileImage = isLoaded ? user?.imageUrl || '/profile-placeholder.png' : '/profile-placeholder.png';
+  // const profileImage = isLoaded ? user?.imageUrl || '/profile-placeholder.png' : '/profile-placeholder.png';
 
   const quickLinks = [
     { name: 'My Clubs', link: '/clubs', icon: Users2, color: 'from-blue-500 to-blue-700' },
     { name: 'Leaderboard', link: '/leaderboard', icon: Trophy, color: 'from-purple-500 to-purple-700' },
     { name: 'Challenges', link: '/challenges', icon: Award, color: 'from-green-500 to-green-700' },
-    { name: 'Senior Corner', link: '/seniors', icon: Users, color: 'from-amber-500 to-amber-700' },
+    { name: 'Senior Corner', link: '/senior-corner', icon: Users, color: 'from-amber-500 to-amber-700' },
     { name: 'Lost & Found', link: '/lost-found', icon: Search, color: 'from-red-500 to-red-700' },
     { name: 'Community', link: '/community', icon: HelpCircle, color: 'from-indigo-500 to-indigo-700' }
   ];
@@ -48,12 +48,12 @@ export default function Dashboard() {
       });
 
       const data = await response.json();
-      console.log('Response from backend:', data);
+      //console.log('Response from backend:', data);
     } catch (error) {
       console.error('Error sending user:', error);
     }
   }
-
+//  console.log('User details:', user);
   async function fetchUserData(user_id) {
     try {
       const response = await fetch(`/api/dashboard?user_id=${user_id}`);
@@ -62,7 +62,7 @@ export default function Dashboard() {
         throw new Error(`Error ${response.status}: ${errText}`);
       }
       const data = await response.json();
-      console.log('User data:', data);
+      //console.log('User data:', data);
       setUserDetails(data);
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -74,14 +74,14 @@ export default function Dashboard() {
       handlenewuser(user);
       fetchUserData(user_id);
     }
-  }, [isLoaded, user, user_id]);
+  }, [isLoaded,user, user_id]);
 
   const u_name = userdetails?.username || 'Loading...';
   const department = userdetails?.department || 'Loading...';
   const current_year = userdetails?.current_year || 'Loading...';
   const points = userdetails?.points || 0;
   const numberofclubsjoined = userdetails?.numberofclubsjoined || 0;
-
+  const profileImage = userdetails?.image?.url || '/profile-placeholder.png';
   const stats = [
     { label: 'Clubs Joined', value: numberofclubsjoined, icon: Users, color: 'text-blue-600' },
     { label: 'XP Points', value: points, icon: Award, color: 'text-purple-600' },
