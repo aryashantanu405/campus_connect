@@ -103,7 +103,6 @@ export async function POST(request) {
     const description = formData.get('description');
     const file = formData.get('image');
     const authorData = JSON.parse(formData.get('author'));
-     console.log('Author Data:', authorData);
     let imageData = null;
     if (file) {
       const result = await uploadImage(file);

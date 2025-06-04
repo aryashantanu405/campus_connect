@@ -56,7 +56,6 @@ export default function CommunityPage() {
       if (!response.ok) throw new Error('Failed to fetch posts');
       const data = await response.json();
       setUserDetails(data.u);
-       console.log('User details:', data.u);
       setPosts(data.posts || data.enhancedPosts || []);
     } catch (error) {
       console.error('Error:', error);
@@ -156,9 +155,13 @@ export default function CommunityPage() {
       if (selectedImage) {
         formDataToSend.append('image', selectedImage);
       }
+
+      // Use the user's profile image from userDetails if available
+      const authorAvatar = userDetails?.image?.url || user.imageUrl;
+      
       formDataToSend.append('author', JSON.stringify({
         name: user.fullName || user.username,
-        avatar: userDetails?.image?.url || '/profile-placeholder.png',
+        avatar: authorAvatar,
         userId: user.id
       }));
 
@@ -267,10 +270,10 @@ export default function CommunityPage() {
               </div>
 
               {/* Post Image */}
-              {post.image_src && (
+              {(post.image?.url || post.image_src) && (
                 <div className="relative w-full aspect-video">
                   <Image
-                    src={post.image_src}
+                    src={post.image?.url || post.image_src}
                     alt={post.title}
                     fill
                     className="object-cover"
