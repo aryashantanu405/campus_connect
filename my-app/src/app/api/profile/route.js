@@ -21,7 +21,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const data = await req.json();
-    const { user_id, ...userData } = data;
+    const { user_id, userData } = data;
 
     if (!user_id) {
       return NextResponse.json({ message: 'User ID is missing' }, { status: 400 });
@@ -33,7 +33,28 @@ export async function POST(req) {
     }
 
     // Update user fields
-    Object.assign(user, userData);
+    if (userData) {
+      Object.assign(user, {
+        username: userData.name,
+        phonenumber: userData.phonenumber,
+        department: userData.department,
+        current_year: userData.current_year,
+        location: userData.location,
+        hobbies: userData.hobbies,
+        bio: userData.bio,
+        githubprofile: userData.githubprofile,
+        linkedinprofile: userData.linkedinprofile
+      });
+    }
+
+    // Handle profile image update separately
+    if (data.profileImage) {
+      user.image = {
+        url: data.profileImage,
+        public_id: null
+      };
+    }
+
     await user.save();
 
     return NextResponse.json({ 

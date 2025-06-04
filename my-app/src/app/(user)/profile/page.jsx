@@ -107,7 +107,6 @@ export default function Profile() {
       }
       const data = await response.json();
       setUserDetails(data);
-      
       reset({
         username: data.name || '',
         phone: data.phonenumber || '',
@@ -210,23 +209,25 @@ export default function Profile() {
     try {
       setIsSubmitting(true);
 
-      const formData = new FormData();
-      formData.append('user_id', user_id);
-      formData.append('userData', JSON.stringify({
-        name: data.username,
-        phonenumber: data.phone,
-        department: data.department,
-        current_year: data.year,
-        location: data.location,
-        hobbies: data.hobbies.split(',').map(h => h.trim()),
-        bio: data.bio,
-        githubprofile: data.github,
-        linkedinprofile: data.linkedin
-      }));
-
       const response = await fetch('/api/profile', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id,
+          userData: {
+            name: data.username,
+            phonenumber: data.phone,
+            department: data.department,
+            current_year: data.year,
+            location: data.location,
+            hobbies: data.hobbies.split(',').map(h => h.trim()),
+            bio: data.bio,
+            githubprofile: data.github,
+            linkedinprofile: data.linkedin
+          }
+        })
       });
 
       if (!response.ok) {
@@ -264,7 +265,6 @@ export default function Profile() {
       linkedin: userdetails?.linkedinprofile || 'linkedin.com/in/username'
     }
   };
-  console.log('Profile Data:', profileData);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
