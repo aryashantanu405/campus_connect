@@ -36,7 +36,6 @@ export async function POST(req) {
     if (userData) {
       Object.assign(user, {
         username: userData.name,
-        phonenumber: userData.phonenumber,
         department: userData.department,
         current_year: userData.current_year,
         location: userData.location,

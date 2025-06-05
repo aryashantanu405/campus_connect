@@ -3,12 +3,10 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema({
   clerkId: {
     type: String,
-    unique: true,
     required: true,
   },
   username: {
     type: String,
-    unique: true,
     maxlength: 20,
     required: true,
   },
@@ -47,10 +45,6 @@ const userSchema = new mongoose.Schema({
   numberofclubsjoined: {
     type: Number,
     default: 0,
-  },
-  phonenumber: {
-    type: String,
-    unique:false,
   },
   hobbies: {
     type: [String],

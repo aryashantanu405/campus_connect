@@ -52,7 +52,6 @@ const formSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(50, 'Name must be less than 50 characters')
     .regex(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
-  
   department: z.string()
     .min(1, 'Please select a department'),
   year: z.string()
@@ -109,7 +108,6 @@ export default function Profile() {
       
       reset({
         username: data.name || '',
-        
         department: data.department || '',
         year: data.current_year || '',
         location: data.location || '',
@@ -248,14 +246,13 @@ export default function Profile() {
     setValue(field, value);
     trigger(field);
   };
-  console.log("this is user detail",userdetails);
+
   const profileData = {
     name: isLoaded ? user?.firstName + ' ' + user?.lastName : 'Loading...',
     email: isLoaded ? user?.emailAddresses[0]?.emailAddress : 'Loading...',
     avatar: userdetails?.image.url || (isLoaded ? user?.imageUrl : '/profile-placeholder.png'),
     dept: userdetails?.department || 'Electronics & Communication',
     year: userdetails?.current_year || '2nd Year',
-   
     location: userdetails?.location || 'Patna, India',
     hobbies: userdetails?.hobbies || ['Photography', 'Gaming', 'Reading'],
     bio: userdetails?.bio || 'Passionate engineering student with a keen interest in technology and innovation.',
@@ -264,7 +261,6 @@ export default function Profile() {
       linkedin: userdetails?.linkedinprofile || 'linkedin.com/in/username'
     }
   };
-  
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
@@ -379,157 +375,159 @@ export default function Profile() {
                     <DialogHeader>
                       <DialogTitle>Edit Profile</DialogTitle>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto pr-2">
-                      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="username">
-                              Full Name
-                              <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              id="username"
-                              {...register('username')}
-                              className={errors.username ? 'border-red-500' : ''}
-                            />
-                            {errors.username && (
-                              <p className="text-sm text-red-500">{errors.username.message}</p>
-                            )}
-                          </div>
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+                      <div className="flex-1 overflow-y-auto pr-2">
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <div className="space-y-2">
+                              <Label htmlFor="username">
+                                Full Name
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="username"
+                                {...register('username')}
+                                className={errors.username ? 'border-red-500' : ''}
+                              />
+                              {errors.username && (
+                                <p className="text-sm text-red-500">{errors.username.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="department">
-                              Department
-                              <span className="text-red-500">*</span>
-                            </Label>
-                            <Select
-                              onValueChange={(value) => handleSelectChange('department', value)}
-                            >
-                              <SelectTrigger className={errors.department ? 'border-red-500' : ''}>
-                                <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
-                                <SelectItem value="Computer Science">Computer Science</SelectItem>
-                                <SelectItem value="Mechanical">Mechanical</SelectItem>
-                                <SelectItem value="Civil">Civil</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {errors.department && (
-                              <p className="text-sm text-red-500">{errors.department.message}</p>
-                            )}
-                          </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="department">
+                                Department
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Select
+                                onValueChange={(value) => handleSelectChange('department', value)}
+                              >
+                                <SelectTrigger className={errors.department ? 'border-red-500' : ''}>
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
+                                  <SelectItem value="Computer Science">Computer Science</SelectItem>
+                                  <SelectItem value="Mechanical">Mechanical</SelectItem>
+                                  <SelectItem value="Civil">Civil</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {errors.department && (
+                                <p className="text-sm text-red-500">{errors.department.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="year">
-                              Year of Study
-                              <span className="text-red-500">*</span>
-                            </Label>
-                            <Select
-                              onValueChange={(value) => handleSelectChange('year', value)}
-                            >
-                              <SelectTrigger className={errors.year ? 'border-red-500' : ''}>
-                                <SelectValue placeholder="Select year" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1st Year">1st Year</SelectItem>
-                                <SelectItem value="2nd Year">2nd Year</SelectItem>
-                                <SelectItem value="3rd Year">3rd Year</SelectItem>
-                                <SelectItem value="4th Year">4th Year</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {errors.year && (
-                              <p className="text-sm text-red-500">{errors.year.message}</p>
-                            )}
-                          </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="year">
+                                Year of Study
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Select
+                                onValueChange={(value) => handleSelectChange('year', value)}
+                              >
+                                <SelectTrigger className={errors.year ? 'border-red-500' : ''}>
+                                  <SelectValue placeholder="Select year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1st Year">1st Year</SelectItem>
+                                  <SelectItem value="2nd Year">2nd Year</SelectItem>
+                                  <SelectItem value="3rd Year">3rd Year</SelectItem>
+                                  <SelectItem value="4th Year">4th Year</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {errors.year && (
+                                <p className="text-sm text-red-500">{errors.year.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="location">
-                              Location
-                              <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              id="location"
-                              {...register('location')}
-                              className={errors.location ? 'border-red-500' : ''}
-                            />
-                            {errors.location && (
-                              <p className="text-sm text-red-500">{errors.location.message}</p>
-                            )}
-                          </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="location">
+                                Location
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="location"
+                                {...register('location')}
+                                className={errors.location ? 'border-red-500' : ''}
+                              />
+                              {errors.location && (
+                                <p className="text-sm text-red-500">{errors.location.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="hobbies">
-                              Hobbies (comma-separated)
-                              <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              id="hobbies"
-                              {...register('hobbies')}
-                              className={errors.hobbies ? 'border-red-500' : ''}
-                            />
-                            {errors.hobbies && (
-                              <p className="text-sm text-red-500">{errors.hobbies.message}</p>
-                            )}
-                          </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="hobbies">
+                                Hobbies (comma-separated)
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Input
+                                id="hobbies"
+                                {...register('hobbies')}
+                                className={errors.hobbies ? 'border-red-500' : ''}
+                              />
+                              {errors.hobbies && (
+                                <p className="text-sm text-red-500">{errors.hobbies.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="bio">
-                              Bio
-                              <span className="text-red-500">*</span>
-                            </Label>
-                            <Textarea
-                              id="bio"
-                              {...register('bio')}
-                              className={`min-h-[100px] ${errors.bio ? 'border-red-500' : ''}`}
-                            />
-                            {errors.bio && (
-                              <p className="text-sm text-red-500">{errors.bio.message}</p>
-                            )}
-                          </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <Label htmlFor="bio">
+                                Bio
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Textarea
+                                id="bio"
+                                {...register('bio')}
+                                className={`min-h-[100px] ${errors.bio ? 'border-red-500' : ''}`}
+                              />
+                              {errors.bio && (
+                                <p className="text-sm text-red-500">{errors.bio.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="github">GitHub Profile</Label>
-                            <Input
-                              id="github"
-                              {...register('github')}
-                              className={errors.github ? 'border-red-500' : ''}
-                            />
-                            {errors.github && (
-                              <p className="text-sm text-red-500">{errors.github.message}</p>
-                            )}
-                          </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="github">GitHub Profile</Label>
+                              <Input
+                                id="github"
+                                {...register('github')}
+                                className={errors.github ? 'border-red-500' : ''}
+                              />
+                              {errors.github && (
+                                <p className="text-sm text-red-500">{errors.github.message}</p>
+                              )}
+                            </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="linkedin">LinkedIn Profile</Label>
-                            <Input
-                              id="linkedin"
-                              {...register('linkedin')}
-                              className={errors.linkedin ? 'border-red-500' : ''}
-                            />
-                            {errors.linkedin && (
-                              <p className="text-sm text-red-500">{errors.linkedin.message}</p>
-                            )}
+                            <div className="space-y-2">
+                              <Label htmlFor="linkedin">LinkedIn Profile</Label>
+                              <Input
+                                id="linkedin"
+                                {...register('linkedin')}
+                                className={errors.linkedin ? 'border-red-500' : ''}
+                              />
+                              {errors.linkedin && (
+                                <p className="text-sm text-red-500">{errors.linkedin.message}</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </form>
-                    </div>
-                    <div className="flex justify-end gap-4 py-4 border-t bg-white mt-auto">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => setIsDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        type="submit"
-                        className="bg-gradient-to-r from-blue-600 to-purple-600"
-                        disabled={!isValid || isSubmitting}
-                      >
-                        {isSubmitting ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                    </div>
+                      </div>
+                      <div className="flex justify-end gap-4 py-4 border-t bg-white mt-auto">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setIsDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600"
+                          disabled={!isValid || isSubmitting}
+                        >
+                          {isSubmitting ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </div>
+                    </form>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -539,6 +537,7 @@ export default function Profile() {
                   <Mail className="w-5 h-5 text-gray-500" />
                   <span>{profileData.email}</span>
                 </div>
+                
                 <div className="flex items-center gap-3">
                   <Building2 className="w-5 h-5 text-gray-500" />
                   <span>{profileData.dept}</span>
