@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +34,23 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@clerk/nextjs";
 
+// Form validation schema
+const postSchema = z.object({
+  title: z.string()
+    .min(3, 'Title must be at least 3 characters')
+    .max(100, 'Title must be less than 100 characters'),
+  description: z.string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(1000, 'Description must be less than 1000 characters'),
+  image: z.instanceof(File, { message: "Image is required" })
+    .refine((file) => ['image/jpeg', 'image/png', 'image/gif'].includes(file.type), {
+      message: "Only .jpg, .jpeg, .png and .gif formats are supported",
+    })
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: "Image must be less than 5MB",
+    })
+});
+
 export default function CommunityPage() {
   const { user } = useUser();
   const [posts, setPosts] = useState([]);
@@ -38,12 +58,19 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-  });
-  const [selectedImage, setSelectedImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+    setValue,
+    watch
+  } = useForm({
+    resolver: zodResolver(postSchema),
+    mode: "onChange"
+  });
 
   useEffect(() => {
     fetchPosts();
@@ -117,20 +144,7 @@ export default function CommunityPage() {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-      if (!validTypes.includes(file.type)) {
-        toast.error('Please upload a valid image file (JPG, PNG, or GIF)');
-        return;
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
-        return;
-      }
-
-      setSelectedImage(file);
+      setValue('image', file, { shouldValidate: true });
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
@@ -139,8 +153,7 @@ export default function CommunityPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
     if (!user) {
       toast.error("Please sign in to create posts");
       return;
@@ -150,11 +163,9 @@ export default function CommunityPage() {
       setIsSubmitting(true);
 
       const formDataToSend = new FormData();
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('description', formData.description);
-      if (selectedImage) {
-        formDataToSend.append('image', selectedImage);
-      }
+      formDataToSend.append('title', data.title);
+      formDataToSend.append('description', data.description);
+      formDataToSend.append('image', data.image);
 
       // Use the user's profile image from userDetails if available
       const authorAvatar = userDetails?.image?.url || user.imageUrl;
@@ -174,8 +185,7 @@ export default function CommunityPage() {
 
       toast.success("Post created successfully!");
       setIsDialogOpen(false);
-      setFormData({ title: '', description: '' });
-      setSelectedImage(null);
+      reset();
       setPreviewImage(null);
       fetchPosts();
     } catch (error) {
@@ -326,31 +336,42 @@ export default function CommunityPage() {
             <DialogHeader>
               <DialogTitle>Create New Post</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">
+                  Title <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  {...register('title')}
+                  className={errors.title ? 'border-red-500' : ''}
                   placeholder="What's on your mind?"
                 />
+                {errors.title && (
+                  <p className="text-sm text-red-500">{errors.title.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">
+                  Description <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  {...register('description')}
+                  className={`min-h-[100px] ${errors.description ? 'border-red-500' : ''}`}
                   placeholder="Share more details..."
-                  className="min-h-[100px]"
                 />
+                {errors.description && (
+                  <p className="text-sm text-red-500">{errors.description.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Upload Image</Label>
-                <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
+                <Label htmlFor="image">
+                  Upload Image <span className="text-red-500">*</span>
+                </Label>
+                <div className={`mt-2 flex justify-center rounded-lg border border-dashed ${errors.image ? 'border-red-500' : 'border-gray-900/25'} px-6 py-10`}>
                   <div className="text-center">
                     {previewImage ? (
                       <div className="relative w-40 h-40 mx-auto mb-4">
@@ -372,7 +393,6 @@ export default function CommunityPage() {
                         <span>Upload a file</span>
                         <input
                           id="file-upload"
-                          name="file-upload"
                           type="file"
                           className="sr-only"
                           accept="image/*"
@@ -384,6 +404,9 @@ export default function CommunityPage() {
                     <p className="text-xs leading-5 text-gray-600">PNG, JPG, GIF up to 5MB</p>
                   </div>
                 </div>
+                {errors.image && (
+                  <p className="text-sm text-red-500">{errors.image.message}</p>
+                )}
               </div>
 
               <div className="flex justify-end gap-4">
@@ -392,8 +415,7 @@ export default function CommunityPage() {
                   variant="outline" 
                   onClick={() => {
                     setIsDialogOpen(false);
-                    setFormData({ title: '', description: '' });
-                    setSelectedImage(null);
+                    reset();
                     setPreviewImage(null);
                   }}
                 >
@@ -402,7 +424,7 @@ export default function CommunityPage() {
                 <Button 
                   type="submit" 
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isValid}
                 >
                   {isSubmitting ? (
                     <>

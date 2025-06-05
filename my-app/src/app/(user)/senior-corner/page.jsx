@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
   MessageSquare,
   ThumbsUp,
@@ -52,21 +55,61 @@ const popularTags = [
   { name: 'preparation', icon: CheckCircle2 }
 ];
 
+// Form validation schemas
+const questionSchema = z.object({
+  title: z.string()
+    .min(5, 'Title must be at least 5 characters')
+    .max(200, 'Title must be less than 200 characters'),
+  content: z.string()
+    .min(20, 'Content must be at least 20 characters')
+    .max(2000, 'Content must be less than 2000 characters'),
+  tags: z.array(z.string())
+    .min(1, 'Select at least one tag')
+    .max(3, 'Maximum 3 tags allowed')
+});
+
+const answerSchema = z.object({
+  content: z.string()
+    .min(20, 'Answer must be at least 20 characters')
+    .max(2000, 'Answer must be less than 2000 characters')
+});
+
 export default function SeniorConnectPage() {
   const { user } = useUser();
-  const [dbuser, setDbUser] = useState([]);
+  const [dbuser, setDbUser] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState(null);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [isAnswerDialogOpen, setIsAnswerDialogOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    tags: []
+
+  const {
+    register: registerQuestion,
+    handleSubmit: handleQuestionSubmit,
+    formState: { errors: questionErrors, isValid: isQuestionValid },
+    reset: resetQuestion,
+    setValue: setQuestionValue,
+    watch: watchQuestion
+  } = useForm({
+    resolver: zodResolver(questionSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+      tags: []
+    },
+    mode: "onChange"
   });
-  const [answerContent, setAnswerContent] = useState('');
+
+  const {
+    register: registerAnswer,
+    handleSubmit: handleAnswerSubmit,
+    formState: { errors: answerErrors, isValid: isAnswerValid },
+    reset: resetAnswer
+  } = useForm({
+    resolver: zodResolver(answerSchema),
+    mode: "onChange"
+  });
 
   useEffect(() => {
     fetchQuestions();
@@ -82,7 +125,7 @@ export default function SeniorConnectPage() {
       if (!response.ok) throw new Error('Failed to fetch questions');
       const data = await response.json();
       setQuestions(data.questions || data.enhancedQuestions || []);
-      setDbUser(data.dbuser || []);
+      setDbUser(data.dbuser);
     } catch (error) {
       console.error('Error:', error);
       toast.error("Failed to load questions. Please try again.");
@@ -95,8 +138,7 @@ export default function SeniorConnectPage() {
     setSelectedTag(selectedTag === tag ? null : tag);
   };
 
-  const handleQuestionSubmit = async (e) => {
-    e.preventDefault();
+  const onQuestionSubmit = async (data) => {
     if (!user) {
       toast.error("Please sign in to ask questions");
       return;
@@ -104,12 +146,14 @@ export default function SeniorConnectPage() {
 
     try {
       const newQuestion = {
-        ...formData,
+        title: data.title,
+        content: data.content,
+        tags: data.tags,
         author: {
           name: user.fullName || user.username,
           avatar: user.imageUrl,
           userId: user.id,
-          year: "3rd Year" // This should come from user profile
+          year: dbuser?.current_year || "3rd Year"
         }
       };
 
@@ -123,7 +167,7 @@ export default function SeniorConnectPage() {
 
       toast.success("Question posted successfully! You earned 5 points!");
       setIsQuestionDialogOpen(false);
-      setFormData({ title: '', content: '', tags: [] });
+      resetQuestion();
       fetchQuestions();
     } catch (error) {
       console.error('Error:', error);
@@ -131,8 +175,7 @@ export default function SeniorConnectPage() {
     }
   };
 
-  const handleAnswerSubmit = async (e) => {
-    e.preventDefault();
+  const onAnswerSubmit = async (data) => {
     if (!user) {
       toast.error("Please sign in to answer questions");
       return;
@@ -146,12 +189,12 @@ export default function SeniorConnectPage() {
           question_id: selectedQuestion._id,
           action: 'answer',
           answer: {
-            content: answerContent,
+            content: data.content,
             author: {
               name: user.fullName || user.username,
               avatar: user.imageUrl,
               userId: user.id,
-              year: dbuser.current_year, // This should come from user profile
+              year: dbuser?.current_year || "Alumni"
             }
           }
         }),
@@ -161,7 +204,7 @@ export default function SeniorConnectPage() {
 
       toast.success("Answer posted successfully! You earned 10 points!");
       setIsAnswerDialogOpen(false);
-      setAnswerContent('');
+      resetAnswer();
       setSelectedQuestion(null);
       fetchQuestions();
     } catch (error) {
@@ -243,8 +286,7 @@ export default function SeniorConnectPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
-      {/* Animated background */}
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-4 sm:p-6 lg:p-8">
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
         <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -252,16 +294,15 @@ export default function SeniorConnectPage() {
       </div>
 
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
             Senior Connect
           </h1>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
             Get guidance from seniors and alumni. Share knowledge, ask questions, and help others grow.
           </p>
         </div>
 
-        {/* Tags Section */}
         <div className="flex flex-wrap gap-4 mb-8 justify-center">
           {popularTags.map(({ name, icon: Icon }) => (
             <Button
@@ -276,8 +317,7 @@ export default function SeniorConnectPage() {
           ))}
         </div>
 
-        {/* Questions Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
           {questions.length === 0 ? (
             <Card className="col-span-full p-8 text-center">
               <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
@@ -291,7 +331,6 @@ export default function SeniorConnectPage() {
                 <DialogTrigger asChild>
                   <Button>Ask a Question</Button>
                 </DialogTrigger>
-                {/* Question Dialog Content */}
               </Dialog>
             </Card>
           ) : (
@@ -300,7 +339,6 @@ export default function SeniorConnectPage() {
                 key={question._id}
                 className="overflow-hidden backdrop-blur-sm bg-white/80 border-2 hover:border-blue-200 transition-all duration-300 hover:shadow-xl"
               >
-                {/* Question Header */}
                 <div className="p-4 flex items-center justify-between border-b border-gray-100">
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -345,7 +383,6 @@ export default function SeniorConnectPage() {
                   )}
                 </div>
 
-                {/* Question Content */}
                 <div className="p-4">
                   <h2 className="text-xl font-bold mb-2">
                     {question.title}
@@ -368,7 +405,6 @@ export default function SeniorConnectPage() {
                   </div>
                 </div>
 
-                {/* Question Stats & Actions */}
                 <div className="p-4 bg-gray-50 flex items-center justify-between">
                   <div className="flex items-center gap-4 text-gray-600">
                     <span className="flex items-center gap-1">
@@ -391,7 +427,6 @@ export default function SeniorConnectPage() {
                   </Button>
                 </div>
 
-                {/* Answers Section */}
                 {question.answers.length > 0 && (
                   <div className="border-t border-gray-100">
                     {question.answers.map((answer) => (
@@ -450,7 +485,6 @@ export default function SeniorConnectPage() {
           )}
         </div>
 
-        {/* Ask Question Button */}
         <Dialog open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -463,43 +497,54 @@ export default function SeniorConnectPage() {
             <DialogHeader>
               <DialogTitle>Ask a Question</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleQuestionSubmit} className="space-y-6">
+            <form onSubmit={handleQuestionSubmit(onQuestionSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">
+                  Title <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  {...registerQuestion('title')}
+                  className={questionErrors.title ? 'border-red-500' : ''}
                   placeholder="What's your question?"
                 />
+                {questionErrors.title && (
+                  <p className="text-sm text-red-500">{questionErrors.title.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="content">Details</Label>
+                <Label htmlFor="content">
+                  Details <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                  {...registerQuestion('content')}
+                  className={`min-h-[150px] ${questionErrors.content ? 'border-red-500' : ''}`}
                   placeholder="Provide more context..."
-                  className="min-h-[150px]"
                 />
+                {questionErrors.content && (
+                  <p className="text-sm text-red-500">{questionErrors.content.message}</p>
+                )}
+              
               </div>
 
               <div className="space-y-2">
-                <Label>Tags</Label>
+                <Label>
+                  Tags <span className="text-red-500">*</span>
+                </Label>
                 <div className="flex flex-wrap gap-2">
                   {popularTags.map(({ name, icon: Icon }) => (
                     <Badge
                       key={name}
-                      variant={formData.tags.includes(name) ? 'default' : 'outline'}
-                      className="cursor-pointer"
+                      variant={watchQuestion('tags').includes(name) ? 'default' : 'outline'}
+                      className={`cursor-pointer ${questionErrors.tags ? 'border-red-500' : ''}`}
                       onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          tags: prev.tags.includes(name)
-                            ? prev.tags.filter(t => t !== name)
-                            : [...prev.tags, name]
-                        }));
+                        const currentTags = watchQuestion('tags');
+                        const newTags = currentTags.includes(name)
+                          ? currentTags.filter(t => t !== name)
+                          : [...currentTags, name];
+                        setQuestionValue('tags', newTags, { shouldValidate: true });
                       }}
                     >
                       <Icon className="w-3 h-3 mr-1" />
@@ -507,13 +552,27 @@ export default function SeniorConnectPage() {
                     </Badge>
                   ))}
                 </div>
+                {questionErrors.tags && (
+                  <p className="text-sm text-red-500">{questionErrors.tags.message}</p>
+                )}
               </div>
 
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => setIsQuestionDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsQuestionDialogOpen(false);
+                    resetQuestion();
+                  }}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Button 
+                  type="submit" 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={!isQuestionValid}
+                >
                   Post Question
                 </Button>
               </div>
@@ -521,7 +580,6 @@ export default function SeniorConnectPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Answer Dialog */}
         <Dialog open={isAnswerDialogOpen} onOpenChange={setIsAnswerDialogOpen}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
@@ -533,27 +591,39 @@ export default function SeniorConnectPage() {
                 <p className="text-gray-600 text-sm">{selectedQuestion.content}</p>
               </div>
             )}
-            <form onSubmit={handleAnswerSubmit} className="space-y-6">
+            <form onSubmit={handleAnswerSubmit(onAnswerSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="answer">Your Answer</Label>
+                <Label htmlFor="content">
+                  Your Answer <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
-                  id="answer"
-                  value={answerContent}
-                  onChange={(e) => setAnswerContent(e.target.value)}
+                  id="content"
+                  {...registerAnswer('content')}
+                  className={`min-h-[200px] ${answerErrors.content ? 'border-red-500' : ''}`}
                   placeholder="Share your knowledge..."
-                  className="min-h-[200px]"
                 />
+                {answerErrors.content && (
+                  <p className="text-sm text-red-500">{answerErrors.content.message}</p>
+                )}
               </div>
 
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => {
-                  setIsAnswerDialogOpen(false);
-                  setSelectedQuestion(null);
-                  setAnswerContent('');
-                }}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsAnswerDialogOpen(false);
+                    setSelectedQuestion(null);
+                    resetAnswer();
+                  }}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Button 
+                  type="submit" 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  disabled={!isAnswerValid}
+                >
                   Post Answer
                 </Button>
               </div>

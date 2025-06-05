@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +41,24 @@ import {
 import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
 
+// Form validation schema
+const itemSchema = z.object({
+  description: z.string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must be less than 500 characters'),
+  place: z.string()
+    .min(3, 'Place must be at least 3 characters')
+    .max(100, 'Place must be less than 100 characters'),
+  type: z.enum(['lost', 'found']),
+  image: z.instanceof(File, { message: "Image is required" })
+    .refine((file) => ['image/jpeg', 'image/png', 'image/gif'].includes(file.type), {
+      message: "Only .jpg, .jpeg, .png and .gif formats are supported",
+    })
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: "Image must be less than 5MB",
+    })
+});
+
 export default function LostAndFound() {
   const { user } = useUser();
   const [items, setItems] = useState([]);
@@ -47,14 +68,24 @@ export default function LostAndFound() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [date, setDate] = useState(new Date());
-  const [formData, setFormData] = useState({
-    description: '',
-    place: '',
-    type: 'lost',
-    image: null
-  });
-  const [selectedImage, setSelectedImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+    setValue,
+    watch
+  } = useForm({
+    resolver: zodResolver(itemSchema),
+    defaultValues: {
+      type: 'lost',
+      description: '',
+      place: ''
+    },
+    mode: "onChange"
+  });
 
   useEffect(() => {
     fetchItems();
@@ -77,31 +108,16 @@ export default function LostAndFound() {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-      if (!validTypes.includes(file.type)) {
-        toast.error('Please upload a valid image file (JPG, PNG, or GIF)');
-        return;
-      }
-
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
-        return;
-      }
-
-      setSelectedImage(file);
+      setValue('image', file, { shouldValidate: true });
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result);
-        setFormData(prev => ({ ...prev, image: file }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
     if (!user) {
       toast.error("Please sign in to post items.");
       return;
@@ -110,16 +126,13 @@ export default function LostAndFound() {
     try {
       setIsSubmitting(true);
       const formDataToSend = new FormData();
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('place', formData.place);
-      formDataToSend.append('type', formData.type);
+      formDataToSend.append('description', data.description);
+      formDataToSend.append('place', data.place);
+      formDataToSend.append('type', data.type);
       formDataToSend.append('date', date.toISOString());
       formDataToSend.append('user_id', user.id);
       formDataToSend.append('owner_username', user.username || user.firstName);
-      
-      if (selectedImage) {
-        formDataToSend.append('image', selectedImage);
-      }
+      formDataToSend.append('image', data.image);
 
       const response = await fetch('/api/lost-found', {
         method: 'POST',
@@ -130,8 +143,7 @@ export default function LostAndFound() {
 
       toast.success("Item posted successfully!");
       setIsDialogOpen(false);
-      setFormData({ description: '', place: '', type: 'lost', image: null });
-      setSelectedImage(null);
+      reset();
       setPreviewImage(null);
       setDate(new Date());
       fetchItems();
@@ -162,7 +174,6 @@ export default function LostAndFound() {
       if (!response.ok) throw new Error('Failed to claim item');
 
       toast.success("Item claimed successfully! The owner will be notified.");
-
       fetchItems();
     } catch (error) {
       console.error('Error:', error);
@@ -178,8 +189,7 @@ export default function LostAndFound() {
     .filter(item => filterType === 'all' || item.type === filterType);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-6 lg:p-8">
-      {/* Animated background */}
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-white p-4 sm:p-6 lg:p-8">
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
         <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -187,16 +197,15 @@ export default function LostAndFound() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
             Lost & Found
           </h1>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+          <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
             Help your fellow students find their lost items or report what you've found. Together we can make a difference!
           </p>
         </div>
 
-        {/* Search and Filter */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -233,9 +242,9 @@ export default function LostAndFound() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {[1, 2, 3].map((n) => (
-              <Card key={n} className="p-6 animate-pulse">
+              <Card key={n} className="p-4 sm:p-6 animate-pulse">
                 <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -249,12 +258,12 @@ export default function LostAndFound() {
             <p className="text-gray-500">Try adjusting your search or filters</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {filteredItems.map((item) => (
               <Card
                 key={item._id}
                 className={cn(
-                  "group p-6 backdrop-blur-sm bg-white/80 border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1",
+                  "group p-4 sm:p-6 backdrop-blur-sm bg-white/80 border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1",
                   item.type === 'lost' 
                     ? "hover:border-red-200" 
                     : "hover:border-green-200"
@@ -331,7 +340,6 @@ export default function LostAndFound() {
           </div>
         )}
 
-        {/* Add Item Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -344,10 +352,12 @@ export default function LostAndFound() {
             <DialogHeader>
               <DialogTitle>Report Lost/Found Item</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="image">Upload Image</Label>
-                <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
+                <Label htmlFor="image">
+                  Upload Image <span className="text-red-500">*</span>
+                </Label>
+                <div className={`mt-2 flex justify-center rounded-lg border border-dashed ${errors.image ? 'border-red-500' : 'border-gray-900/25'} px-6 py-10`}>
                   <div className="text-center">
                     {previewImage ? (
                       <div className="relative w-40 h-40 mx-auto mb-4">
@@ -369,7 +379,6 @@ export default function LostAndFound() {
                         <span>Upload a file</span>
                         <input
                           id="file-upload"
-                          name="file-upload"
                           type="file"
                           className="sr-only"
                           accept="image/*"
@@ -378,34 +387,46 @@ export default function LostAndFound() {
                       </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
-                    <p className="text-xs leading-5 text-gray-600">PNG, JPG, GIF up to 10MB</p>
+                    <p className="text-xs leading-5 text-gray-600">PNG, JPG, GIF up to 5MB</p>
                   </div>
                 </div>
+                {errors.image && (
+                  <p className="text-sm text-red-500">{errors.image.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">
+                  Description <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  {...register('description')}
+                  className={`min-h-[100px] ${errors.description ? 'border-red-500' : ''}`}
                   placeholder="Describe the item..."
-                  className="min-h-[100px]"
                 />
+                {errors.description && (
+                  <p className="text-sm text-red-500">{errors.description.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="place">Place</Label>
+                <Label htmlFor="place">
+                  Place <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="place"
-                  value={formData.place}
-                  onChange={(e) => setFormData(prev => ({ ...prev, place: e.target.value }))}
+                  {...register('place')}
+                  className={errors.place ? 'border-red-500' : ''}
                   placeholder="Where was it lost/found?"
                 />
+                {errors.place && (
+                  <p className="text-sm text-red-500">{errors.place.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label>Date</Label>
+                <Label>Date <span className="text-red-500">*</span></Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -433,24 +454,32 @@ export default function LostAndFound() {
               <div className="flex items-center space-x-2">
                 <Switch
                   id="type"
-                  checked={formData.type === 'found'}
+                  checked={watch('type') === 'found'}
                   onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, type: checked ? 'found' : 'lost' }))
+                    setValue('type', checked ? 'found' : 'lost', { shouldValidate: true })
                   }
                 />
                 <Label htmlFor="type">
-                  {formData.type === 'lost' ? 'Lost Item' : 'Found Item'}
+                  {watch('type') === 'lost' ? 'Lost Item' : 'Found Item'}
                 </Label>
               </div>
 
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    reset();
+                    setPreviewImage(null);
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isValid}
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}
                 </Button>

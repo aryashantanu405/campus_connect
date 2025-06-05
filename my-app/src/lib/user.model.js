@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
   },
   phonenumber: {
     type: String,
-    default: "9999999999",
+    unique:false,
   },
   hobbies: {
     type: [String],

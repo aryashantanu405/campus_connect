@@ -1,7 +1,5 @@
 import connectDB from '@/lib/connectDb';
-import { connect } from 'mongoose';
 import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
 import Usermodel from '@/lib/user.model';
 
 
@@ -11,13 +9,13 @@ connectDB();
 export async function POST(req) {
   try {
     const userData = await req.json(); // parse the incoming JSON
-    //console.log('User received at backend:',userData); // log full user object
+    console.log('new User received at backend:'); // log full user object
 
-    const {id,firstName,lastName} = userData;
+    const {id,firstName} = userData;
     const email=userData.primaryEmailAddress.emailAddress; // destructure the user data
        const existinguser=await Usermodel.findOne({ clerkId: id });
     if (existinguser) {
-      // console.log('User already exists in the database:', existinguser); // log the existing user object
+      console.log('User already exists in the database:', existinguser); // log the existing user object
       return NextResponse.json({ message: 'User already exists' }, { status: 200 });
     }
     else{
@@ -30,7 +28,7 @@ const u=new Usermodel({
       points: 0,
     });
     await u.save();
-    console.log('User saved to database:'); // log the saved user object
+    console.log('new User saved to database:'); // log the saved user object
     }
     return NextResponse.json({ message: 'User received successfully' }, { status: 200 });
   } catch (error) {

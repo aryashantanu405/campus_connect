@@ -26,7 +26,7 @@ export default function Dashboard() {
   const user_id = isLoaded ? user?.id : null;
 
   const user_name = isLoaded ? user?.firstName || 'User' : 'Loading...';
-  // const profileImage = isLoaded ? user?.imageUrl || '/profile-placeholder.png' : '/profile-placeholder.png';
+
 
   const quickLinks = [
     { name: 'My Clubs', link: '/clubs', icon: Users2, color: 'from-blue-500 to-blue-700' },
