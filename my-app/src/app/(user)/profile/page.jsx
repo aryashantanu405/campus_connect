@@ -52,6 +52,7 @@ const formSchema = z.object({
     .min(2, 'Name must be at least 2 characters')
     .max(50, 'Name must be less than 50 characters')
     .regex(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
+ 
   department: z.string()
     .min(1, 'Please select a department'),
   year: z.string()
@@ -371,147 +372,145 @@ export default function Profile() {
                       Edit Profile
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] h-[90vh] flex flex-col">
+                  <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                       <DialogTitle>Edit Profile</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col">
-                      <div className="flex-1 overflow-y-auto pr-2">
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <div className="space-y-2">
-                              <Label htmlFor="username">
-                                Full Name
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Input
-                                id="username"
-                                {...register('username')}
-                                className={errors.username ? 'border-red-500' : ''}
-                              />
-                              {errors.username && (
-                                <p className="text-sm text-red-500">{errors.username.message}</p>
-                              )}
-                            </div>
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+                      <div className="flex-1 overflow-y-auto px-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="username">
+                              Full Name
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="username"
+                              {...register('username')}
+                              className={errors.username ? 'border-red-500' : ''}
+                            />
+                            {errors.username && (
+                              <p className="text-sm text-red-500">{errors.username.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="department">
-                                Department
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Select
-                                onValueChange={(value) => handleSelectChange('department', value)}
-                              >
-                                <SelectTrigger className={errors.department ? 'border-red-500' : ''}>
-                                  <SelectValue placeholder="Select department" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
-                                  <SelectItem value="Computer Science">Computer Science</SelectItem>
-                                  <SelectItem value="Mechanical">Mechanical</SelectItem>
-                                  <SelectItem value="Civil">Civil</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              {errors.department && (
-                                <p className="text-sm text-red-500">{errors.department.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="department">
+                              Department
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                              onValueChange={(value) => handleSelectChange('department', value)}
+                            >
+                              <SelectTrigger className={errors.department ? 'border-red-500' : ''}>
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Electronics & Communication">Electronics & Communication</SelectItem>
+                                <SelectItem value="Computer Science">Computer Science</SelectItem>
+                                <SelectItem value="Mechanical">Mechanical</SelectItem>
+                                <SelectItem value="Civil">Civil</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errors.department && (
+                              <p className="text-sm text-red-500">{errors.department.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="year">
-                                Year of Study
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Select
-                                onValueChange={(value) => handleSelectChange('year', value)}
-                              >
-                                <SelectTrigger className={errors.year ? 'border-red-500' : ''}>
-                                  <SelectValue placeholder="Select year" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="1st Year">1st Year</SelectItem>
-                                  <SelectItem value="2nd Year">2nd Year</SelectItem>
-                                  <SelectItem value="3rd Year">3rd Year</SelectItem>
-                                  <SelectItem value="4th Year">4th Year</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              {errors.year && (
-                                <p className="text-sm text-red-500">{errors.year.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="year">
+                              Year of Study
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                              onValueChange={(value) => handleSelectChange('year', value)}
+                            >
+                              <SelectTrigger className={errors.year ? 'border-red-500' : ''}>
+                                <SelectValue placeholder="Select year" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1st Year">1st Year</SelectItem>
+                                <SelectItem value="2nd Year">2nd Year</SelectItem>
+                                <SelectItem value="3rd Year">3rd Year</SelectItem>
+                                <SelectItem value="4th Year">4th Year</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {errors.year && (
+                              <p className="text-sm text-red-500">{errors.year.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="location">
-                                Location
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Input
-                                id="location"
-                                {...register('location')}
-                                className={errors.location ? 'border-red-500' : ''}
-                              />
-                              {errors.location && (
-                                <p className="text-sm text-red-500">{errors.location.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="location">
+                              Location
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="location"
+                              {...register('location')}
+                              className={errors.location ? 'border-red-500' : ''}
+                            />
+                            {errors.location && (
+                              <p className="text-sm text-red-500">{errors.location.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="hobbies">
-                                Hobbies (comma-separated)
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Input
-                                id="hobbies"
-                                {...register('hobbies')}
-                                className={errors.hobbies ? 'border-red-500' : ''}
-                              />
-                              {errors.hobbies && (
-                                <p className="text-sm text-red-500">{errors.hobbies.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="hobbies">
+                              Hobbies (comma-separated)
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="hobbies"
+                              {...register('hobbies')}
+                              className={errors.hobbies ? 'border-red-500' : ''}
+                            />
+                            {errors.hobbies && (
+                              <p className="text-sm text-red-500">{errors.hobbies.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2 md:col-span-2">
-                              <Label htmlFor="bio">
-                                Bio
-                                <span className="text-red-500">*</span>
-                              </Label>
-                              <Textarea
-                                id="bio"
-                                {...register('bio')}
-                                className={`min-h-[100px] ${errors.bio ? 'border-red-500' : ''}`}
-                              />
-                              {errors.bio && (
-                                <p className="text-sm text-red-500">{errors.bio.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="bio">
+                              Bio
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Textarea
+                              id="bio"
+                              {...register('bio')}
+                              className={`min-h-[100px] ${errors.bio ? 'border-red-500' : ''}`}
+                            />
+                            {errors.bio && (
+                              <p className="text-sm text-red-500">{errors.bio.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="github">GitHub Profile</Label>
-                              <Input
-                                id="github"
-                                {...register('github')}
-                                className={errors.github ? 'border-red-500' : ''}
-                              />
-                              {errors.github && (
-                                <p className="text-sm text-red-500">{errors.github.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="github">GitHub Profile</Label>
+                            <Input
+                              id="github"
+                              {...register('github')}
+                              className={errors.github ? 'border-red-500' : ''}
+                            />
+                            {errors.github && (
+                              <p className="text-sm text-red-500">{errors.github.message}</p>
+                            )}
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="linkedin">LinkedIn Profile</Label>
-                              <Input
-                                id="linkedin"
-                                {...register('linkedin')}
-                                className={errors.linkedin ? 'border-red-500' : ''}
-                              />
-                              {errors.linkedin && (
-                                <p className="text-sm text-red-500">{errors.linkedin.message}</p>
-                              )}
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="linkedin">LinkedIn Profile</Label>
+                            <Input
+                              id="linkedin"
+                              {...register('linkedin')}
+                              className={errors.linkedin ? 'border-red-500' : ''}
+                            />
+                            {errors.linkedin && (
+                              <p className="text-sm text-red-500">{errors.linkedin.message}</p>
+                            )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex justify-end gap-4 py-4 border-t bg-white mt-auto">
+                      <div className="flex justify-end gap-4 py-4 border-t bg-white mt-4">
                         <Button 
                           type="button" 
                           variant="outline" 
