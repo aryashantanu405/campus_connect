@@ -7,6 +7,9 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider publishableKey={pkey}>
     <html lang="en">
+      <head>
+        <meta name="google-site-verification" content="h0pDbBvLuOF5z8i5vafsbrq6TwTAciuUpagQa-odMZk" />
+      </head>
       <body
       >
         {children}
