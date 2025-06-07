@@ -115,10 +115,9 @@ export default function Home() {
             <div className="bg-purple-50 rounded-full p-4 w-fit mx-auto mb-6 group-hover:bg-purple-100 transition-colors">
               <BookOpen className="h-12 w-12 text-purple-600" />
             </div>
-            <h3 className="text-2xl font-semibold mb-4 text-center">Senior Connect</h3>
-            <p className="text-gray-600 leading-relaxed">
-              Learn from experienced seniors, access exclusive resources, and get personalized 
-              guidance for success.
+            <h3 className="text-2xl font-semibold mb-4 text-center">Made with</h3>
+            <p className="text-gray-600 leading-relaxed text-3xl">
+              Bolt.new
             </p>
           </Card>
 
@@ -141,19 +140,19 @@ export default function Home() {
         <div className="container relative mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
             <div className="group">
-              <p className="text-5xl font-bold text-blue-600 mb-3 group-hover:scale-110 transition-transform">5000+</p>
+              <p className="text-5xl font-bold text-blue-600 mb-3 group-hover:scale-110 transition-transform">50+</p>
               <p className="text-gray-700 font-medium">Active Users</p>
             </div>
             <div className="group">
-              <p className="text-5xl font-bold text-purple-600 mb-3 group-hover:scale-110 transition-transform">50+</p>
+              <p className="text-5xl font-bold text-purple-600 mb-3 group-hover:scale-110 transition-transform">10+</p>
               <p className="text-gray-700 font-medium">Campus Clubs</p>
             </div>
             <div className="group">
-              <p className="text-5xl font-bold text-amber-600 mb-3 group-hover:scale-110 transition-transform">200+</p>
+              <p className="text-5xl font-bold text-amber-600 mb-3 group-hover:scale-110 transition-transform">20+</p>
               <p className="text-gray-700 font-medium">Senior Mentors</p>
             </div>
             <div className="group">
-              <p className="text-5xl font-bold text-green-600 mb-3 group-hover:scale-110 transition-transform">1000+</p>
+              <p className="text-5xl font-bold text-green-600 mb-3 group-hover:scale-110 transition-transform">100+</p>
               <p className="text-gray-700 font-medium">Daily Interactions</p>
             </div>
           </div>
